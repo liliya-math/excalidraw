@@ -101,6 +101,7 @@ import Collab, {
 } from "./collab/Collab";
 import { AppFooter } from "./components/AppFooter";
 import { loadBuiltinFiles } from "./lili/builtinFiles";
+import { StudentBoardBadge, StudentBoardsDialog } from "./lili/StudentBoards";
 import { buildLiliLibrary } from "./lili/library";
 import { setLibraryPreviewFiles } from "@excalidraw/excalidraw/hooks/useLibraryItemSvg";
 import { AppMainMenu } from "./components/AppMainMenu";
@@ -481,6 +482,7 @@ const ExcalidrawWrapper = () => {
   }, [excalidrawAPI]);
 
   const [, forceRefresh] = useState(false);
+  const [studentBoardsOpen, setStudentBoardsOpen] = useState(false);
 
   useEffect(() => {
     if (isDevEnv()) {
@@ -1054,6 +1056,7 @@ const ExcalidrawWrapper = () => {
       >
         <AppMainMenu
           onCollabDialogOpen={onCollabDialogOpen}
+          onStudentBoardsOpen={() => setStudentBoardsOpen(true)}
           isCollaborating={isCollaborating}
           isCollabEnabled={!isCollabDisabled}
           theme={appTheme}
@@ -1084,6 +1087,10 @@ const ExcalidrawWrapper = () => {
           )}
         </OverwriteConfirmDialog>
         <AppFooter onChange={() => excalidrawAPI?.refresh()} />
+        <StudentBoardBadge />
+        {studentBoardsOpen && (
+          <StudentBoardsDialog onClose={() => setStudentBoardsOpen(false)} />
+        )}
         {excalidrawAPI && <AIComponents excalidrawAPI={excalidrawAPI} />}
 
         <TTDDialogTrigger />

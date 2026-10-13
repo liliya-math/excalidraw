@@ -142,6 +142,88 @@ export const isSavedToFirebase = (
   return true;
 };
 
+// lili.math: boards and images are stored on our own server (the same host
+// as the collaboration server), encrypted in the browser with the room key.
+// The exported names are kept so the rest of the app is unchanged.
+// -----------------------------------------------------------------------------
+
+const STORAGE_URL = `${String(import.meta.env.VITE_APP_WS_SERVER_URL).replace(
+  /\/$/,
+  "",
+)}/storage`;
+
+type StoredScene = {
+  rev?: number;
+  sceneVersion: number;
+  iv: string;
+  ciphertext: string;
+};
+
+const toBase64 = (bytes: Uint8Array) => {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+};
+
+const fromBase64 = (value: string) => {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+};
+
+const storagePath = (...segments: string[]) =>
+  `${STORAGE_URL}/${segments
+    .join("/")
+    .split("/")
+    .filter(Boolean)
+    .map(encodeURIComponent)
+    .join("/")}`;
+
+const decryptStoredScene = async (
+  data: StoredScene,
+  roomKey: string,
+): Promise<readonly ExcalidrawElement[]> => {
+  const ciphertext = fromBase64(data.ciphertext) as Uint8Array<ArrayBuffer>;
+  const iv = fromBase64(data.iv) as Uint8Array<ArrayBuffer>;
+  const decrypted = await decryptData(iv, ciphertext, roomKey);
+  const decodedData = new TextDecoder("utf-8").decode(
+    new Uint8Array(decrypted),
+  );
+  return JSON.parse(decodedData);
+};
+
+const createStoredScene = async (
+  elements: readonly SyncableExcalidrawElement[],
+  roomKey: string,
+): Promise<StoredScene> => {
+  const sceneVersion = getSceneVersion(elements);
+  const { ciphertext, iv } = await encryptElements(roomKey, elements);
+  return {
+    sceneVersion,
+    ciphertext: toBase64(new Uint8Array(ciphertext)),
+    iv: toBase64(iv),
+  };
+};
+
+const fetchStoredScene = async (roomId: string) => {
+  const response = await fetch(storagePath("scenes", roomId), {
+    cache: "no-store",
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`storage: ${response.status}`);
+  }
+  return (await response.json()) as StoredScene;
+};
+
 export const saveFilesToFirebase = async ({
   prefix,
   files,
@@ -149,18 +231,20 @@ export const saveFilesToFirebase = async ({
   prefix: string;
   files: { id: FileId; buffer: Uint8Array }[];
 }) => {
-  const storage = await loadFirebaseStorage();
-
   const erroredFiles: FileId[] = [];
   const savedFiles: FileId[] = [];
 
   await Promise.all(
     files.map(async ({ id, buffer }) => {
       try {
-        const storageRef = ref(storage, `${prefix}/${id}`);
-        await uploadBytes(storageRef, buffer, {
-          cacheControl: `public, max-age=${FILE_CACHE_MAX_AGE_SEC}`,
+        const response = await fetch(storagePath("files", prefix, id), {
+          method: "PUT",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: buffer as Uint8Array<ArrayBuffer>,
         });
+        if (!response.ok) {
+          throw new Error(`storage: ${response.status}`);
+        }
         savedFiles.push(id);
       } catch (error: any) {
         erroredFiles.push(id);
@@ -169,19 +253,6 @@ export const saveFilesToFirebase = async ({
   );
 
   return { savedFiles, erroredFiles };
-};
-
-const createFirebaseSceneDocument = async (
-  elements: readonly SyncableExcalidrawElement[],
-  roomKey: string,
-) => {
-  const sceneVersion = getSceneVersion(elements);
-  const { ciphertext, iv } = await encryptElements(roomKey, elements);
-  return {
-    sceneVersion,
-    ciphertext: Bytes.fromUint8Array(new Uint8Array(ciphertext)),
-    iv: Bytes.fromUint8Array(iv),
-  } as FirebaseStoredScene;
 };
 
 export const saveToFirebase = async (
@@ -200,50 +271,48 @@ export const saveToFirebase = async (
     return null;
   }
 
-  const firestore = _getFirestore();
-  const docRef = doc(firestore, "scenes", roomId);
-
-  const storedScene = await runTransaction(firestore, async (transaction) => {
-    const snapshot = await transaction.get(docRef);
-
-    if (!snapshot.exists()) {
-      const storedScene = await createFirebaseSceneDocument(elements, roomKey);
-
-      transaction.set(docRef, storedScene);
-
-      return storedScene;
+  // optimistic write: re-read and reconcile if someone saved in between
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const prevStoredScene = await fetchStoredScene(roomId);
+    let toStore = elements;
+    if (prevStoredScene) {
+      const prevStoredElements = getSyncableElements(
+        restoreElements(
+          await decryptStoredScene(prevStoredScene, roomKey),
+          null,
+        ),
+      );
+      toStore = getSyncableElements(
+        reconcileElements(
+          elements,
+          prevStoredElements as OrderedExcalidrawElement[] as RemoteExcalidrawElement[],
+          appState,
+        ),
+      );
+    }
+    const storedScene = await createStoredScene(toStore, roomKey);
+    const response = await fetch(
+      `${storagePath("scenes", roomId)}?rev=${prevStoredScene?.rev ?? 0}`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(storedScene),
+      },
+    );
+    if (response.status === 409) {
+      continue;
+    }
+    if (!response.ok) {
+      throw new Error(`storage: ${response.status}`);
     }
 
-    const prevStoredScene = snapshot.data() as FirebaseStoredScene;
-    const prevStoredElements = getSyncableElements(
-      restoreElements(await decryptElements(prevStoredScene, roomKey), null),
+    const storedElements = getSyncableElements(
+      restoreElements(await decryptStoredScene(storedScene, roomKey), null),
     );
-    const reconciledElements = getSyncableElements(
-      reconcileElements(
-        elements,
-        prevStoredElements as OrderedExcalidrawElement[] as RemoteExcalidrawElement[],
-        appState,
-      ),
-    );
-
-    const storedScene = await createFirebaseSceneDocument(
-      reconciledElements,
-      roomKey,
-    );
-
-    transaction.update(docRef, storedScene);
-
-    // Return the stored elements as the in memory `reconciledElements` could have mutated in the meantime
-    return storedScene;
-  });
-
-  const storedElements = getSyncableElements(
-    restoreElements(await decryptElements(storedScene, roomKey), null),
-  );
-
-  FirebaseSceneVersionCache.set(socket, storedElements);
-
-  return toBrandedType<RemoteExcalidrawElement[]>(storedElements);
+    FirebaseSceneVersionCache.set(socket, storedElements);
+    return toBrandedType<RemoteExcalidrawElement[]>(storedElements);
+  }
+  throw new Error("storage: too many concurrent saves");
 };
 
 export const loadFromFirebase = async (
@@ -251,15 +320,12 @@ export const loadFromFirebase = async (
   roomKey: string,
   socket: Socket | null,
 ): Promise<readonly SyncableExcalidrawElement[] | null> => {
-  const firestore = _getFirestore();
-  const docRef = doc(firestore, "scenes", roomId);
-  const docSnap = await getDoc(docRef);
-  if (!docSnap.exists()) {
+  const storedScene = await fetchStoredScene(roomId);
+  if (!storedScene) {
     return null;
   }
-  const storedScene = docSnap.data() as FirebaseStoredScene;
   const elements = getSyncableElements(
-    restoreElements(await decryptElements(storedScene, roomKey), null, {
+    restoreElements(await decryptStoredScene(storedScene, roomKey), null, {
       deleteInvisibleElements: true,
     }),
   );
@@ -282,10 +348,7 @@ export const loadFilesFromFirebase = async (
   await Promise.all(
     [...new Set(filesIds)].map(async (id) => {
       try {
-        const url = `https://firebasestorage.googleapis.com/v0/b/${
-          FIREBASE_CONFIG.storageBucket
-        }/o/${encodeURIComponent(prefix.replace(/^\//, ""))}%2F${id}`;
-        const response = await fetch(`${url}?alt=media`);
+        const response = await fetch(storagePath("files", prefix, id));
         if (response.status < 400) {
           const arrayBuffer = await response.arrayBuffer();
 

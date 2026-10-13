@@ -1,4 +1,4 @@
-import { eyeIcon } from "@excalidraw/excalidraw/components/icons";
+import { eyeIcon, usersIcon } from "@excalidraw/excalidraw/components/icons";
 import { MainMenu } from "@excalidraw/excalidraw/index";
 import React from "react";
 
@@ -12,6 +12,7 @@ import { saveDebugState } from "./DebugCanvas";
 
 export const AppMainMenu: React.FC<{
   onCollabDialogOpen: () => any;
+  onStudentBoardsOpen: () => void;
   isCollaborating: boolean;
   isCollabEnabled: boolean;
   theme: Theme | "system";
@@ -29,7 +30,14 @@ export const AppMainMenu: React.FC<{
           onSelect={() => props.onCollabDialogOpen()}
         />
       )}
-      <MainMenu.DefaultItems.CommandPalette className="highlighted" />
+      <MainMenu.Item
+        icon={usersIcon}
+        onSelect={() => props.onStudentBoardsOpen()}
+        className="highlighted"
+      >
+        Доски учеников
+      </MainMenu.Item>
+      <MainMenu.DefaultItems.CommandPalette />
       <MainMenu.DefaultItems.SearchMenu />
       <MainMenu.DefaultItems.Help />
       <MainMenu.DefaultItems.ClearCanvas />
