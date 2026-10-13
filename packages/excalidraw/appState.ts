@@ -1,5 +1,4 @@
 import {
-  COLOR_PALETTE,
   ARROW_TYPE,
   DEFAULT_ELEMENT_PROPS,
   DEFAULT_FONT_FAMILY,
@@ -10,7 +9,6 @@ import {
   EXPORT_SCALES,
   STATS_PANELS,
   THEME,
-  DEFAULT_GRID_STEP,
   isTestEnv,
   DEFAULT_STICKY_NOTE_BG,
 } from "@excalidraw/common";
@@ -72,8 +70,8 @@ export const getDefaultAppState = (): Omit<
     exportWithDarkMode: false,
     fileHandle: null,
     gridSize: DEFAULT_GRID_SIZE,
-    gridStep: DEFAULT_GRID_STEP,
-    gridModeEnabled: false,
+    gridStep: 1, // lili.math: no bold lines, like a notebook
+    gridModeEnabled: true, // lili.math: squared board by default
     isBindingEnabled: true,
     bindingPreference: "enabled",
     isMidpointSnappingEnabled: true,

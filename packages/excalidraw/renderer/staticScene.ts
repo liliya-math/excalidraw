@@ -1,5 +1,4 @@
 import {
-  applyDarkModeFilter,
   COLOR_WHITE,
   FRAME_STYLE,
   THEME,
@@ -54,14 +53,18 @@ import type {
 } from "../scene/types";
 import type { StaticCanvasAppState, Zoom } from "../types";
 
+// lili.math: solid notebook-style grid lines
+const BOARD_NOTEBOOK_GRID = true;
+
 const GridLineColor = {
   [THEME.LIGHT]: {
     bold: "#dddddd",
     regular: "#e5e5e5",
   },
+  // lili.math: faint chalk "notebook" squares on the green board
   [THEME.DARK]: {
-    bold: applyDarkModeFilter("#dddddd"),
-    regular: applyDarkModeFilter("#e5e5e5"),
+    bold: "rgba(243, 236, 226, 0.13)",
+    regular: "rgba(243, 236, 226, 0.13)",
   },
 } as const;
 
@@ -130,7 +133,7 @@ const strokeGrid = (
     const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
 
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
+    context.setLineDash(BOARD_NOTEBOOK_GRID || isBold ? [] : lineDash);
     context.strokeStyle = isBold
       ? GridLineColor[theme].bold
       : GridLineColor[theme].regular;
@@ -151,7 +154,7 @@ const strokeGrid = (
     const lineDash = [lineWidth * 3, spaceWidth + (lineWidth + spaceWidth)];
 
     context.beginPath();
-    context.setLineDash(isBold ? [] : lineDash);
+    context.setLineDash(BOARD_NOTEBOOK_GRID || isBold ? [] : lineDash);
     context.strokeStyle = isBold
       ? GridLineColor[theme].bold
       : GridLineColor[theme].regular;

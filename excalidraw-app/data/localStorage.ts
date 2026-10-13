@@ -78,6 +78,14 @@ export const importFromLocalStorage = () => {
     if (appState.currentItemStrokeColor === "#1e1e1e") {
       appState.currentItemStrokeColor = "#f3ece2";
     }
+    // notebook squares: turn on once for boards saved before they existed
+    try {
+      if (!localStorage.getItem("lili-notebook-grid-v1")) {
+        appState.gridModeEnabled = true;
+        appState.gridStep = 1;
+        localStorage.setItem("lili-notebook-grid-v1", "1");
+      }
+    } catch {}
   }
   return { elements, appState };
 };
