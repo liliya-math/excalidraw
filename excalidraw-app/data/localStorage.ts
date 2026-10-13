@@ -70,6 +70,15 @@ export const importFromLocalStorage = () => {
       // Do nothing because appState is already null
     }
   }
+  // lili.math: boards saved before the green theme move to the chalkboard look
+  if (appState) {
+    if (["#ffffff", "#fff", "white"].includes(appState.viewBackgroundColor)) {
+      appState.viewBackgroundColor = "#1e3a2f";
+    }
+    if (appState.currentItemStrokeColor === "#1e1e1e") {
+      appState.currentItemStrokeColor = "#f3ece2";
+    }
+  }
   return { elements, appState };
 };
 

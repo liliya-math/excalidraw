@@ -7,7 +7,12 @@ languageDetector.init({
   languageUtils: {},
 });
 
+// lili.math: lessons are in Russian, so the board always starts in Russian
 export const getPreferredLanguage = () => {
+  const ru = languages.find((lang) => lang.code === "ru-RU")?.code;
+  if (ru) {
+    return ru;
+  }
   const detectedLanguages = languageDetector.detect();
 
   const detectedLanguage = Array.isArray(detectedLanguages)

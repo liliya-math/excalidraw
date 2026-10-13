@@ -114,7 +114,7 @@ export const getDefaultAppState = (): Omit<
     editingFrame: null,
     elementsToHighlight: null,
     toast: null,
-    viewBackgroundColor: COLOR_PALETTE.white,
+    viewBackgroundColor: "#1e3a2f", // lili.math board
     zenModeEnabled: false,
     zoom: {
       value: 1 as NormalizedZoomValue,

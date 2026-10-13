@@ -156,3 +156,59 @@
     --plus-banner-subtitle: #8f8cc4;
   }
 }
+
+/* lili.math: brand block on the welcome screen */
+.excalidraw .lili-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  font-family: var(--ui-font);
+}
+.excalidraw .lili-brand__name {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #f3ece2;
+}
+.excalidraw .lili-brand__sub {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #a9b6ad;
+  margin-top: 0.15rem;
+}
+.excalidraw .lili-mascots {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 1.4rem 0 1.1rem;
+  pointer-events: none;
+}
+.excalidraw .lili-mascots img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(243, 236, 226, 0.18);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  animation: lili-pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+}
+@keyframes lili-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 480px) {
+  .excalidraw .lili-mascots img {
+    width: 40px;
+    height: 40px;
+  }
+  .excalidraw .lili-brand__name {
+    font-size: 1.6rem;
+  }
+}

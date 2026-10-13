@@ -84,7 +84,8 @@ const cssInvert = (
 };
 
 export const applyDarkModeFilter = (color: string, enable = true): string => {
-  if (!enable) {
+  // lili.math: the dark theme shows true colors on the green board
+  if (!enable || BOARD_TRUE_COLORS) {
     return color;
   }
 
@@ -139,6 +140,9 @@ const _reverseDarkModeInvert = (
 };
 
 export const removeDarkModeFilter = (color: string): string => {
+  if (BOARD_TRUE_COLORS) {
+    return color;
+  }
   const tc = tinycolor(color);
   const alpha = tc.getAlpha();
   const rgb = tc.toRgb();
@@ -183,6 +187,20 @@ export type ColorPaletteCustom = { [key: string]: ColorTuple | string };
 export type ColorShadesIndexes = [number, number, number, number, number];
 
 export const MAX_CUSTOM_COLORS_USED_IN_CANVAS = 5;
+
+// lili.math board palette ("night garden")
+export const BOARD_TRUE_COLORS = true;
+export const BOARD_COLORS = {
+  board: "#1e3a2f",
+  night: "#14211e",
+  chalk: "#f3ece2",
+  butter: "#f5dc6a",
+  apricot: "#f2905e",
+  sky: "#a9c1ff",
+  mint: "#a9d18e",
+  cobalt: "#1747c9",
+  sage: "#5d7a4f",
+} as const;
 export const COLORS_PER_ROW = 5;
 
 export const DEFAULT_CHART_COLOR_INDEX = 4;
@@ -237,20 +255,20 @@ export const COLOR_TOP_PICKS_SLOTS = 5;
 
 // ORDER matters for positioning in quick picker
 export const DEFAULT_ELEMENT_STROKE_PICKS = [
-  COLOR_PALETTE.black,
-  COLOR_PALETTE.red[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
-  COLOR_PALETTE.green[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
-  COLOR_PALETTE.blue[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
-  COLOR_PALETTE.yellow[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
+  BOARD_COLORS.chalk,
+  BOARD_COLORS.butter,
+  BOARD_COLORS.apricot,
+  BOARD_COLORS.sky,
+  BOARD_COLORS.mint,
 ] as ColorTuple;
 
 // ORDER matters for positioning in quick picker
 export const DEFAULT_ELEMENT_BACKGROUND_PICKS = [
   COLOR_PALETTE.transparent,
-  COLOR_PALETTE.red[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
-  COLOR_PALETTE.green[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
-  COLOR_PALETTE.blue[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
-  COLOR_PALETTE.yellow[DEFAULT_ELEMENT_BACKGROUND_COLOR_INDEX],
+  BOARD_COLORS.sage,
+  BOARD_COLORS.cobalt,
+  BOARD_COLORS.apricot,
+  BOARD_COLORS.butter,
 ] as ColorTuple;
 
 // ORDER matters for positioning in quick picker.
@@ -267,8 +285,13 @@ export const BUCKET_FILL_BACKGROUND_PICKS = [
 // sticky notes are their own color domain (own defaults, own picks)
 export const DEFAULT_STICKY_NOTE_BG = "#ffdf6b";
 
-export const STICKY_NOTE_STROKE_PICKS: ColorTuple =
-  DEFAULT_ELEMENT_STROKE_PICKS;
+export const STICKY_NOTE_STROKE_PICKS: ColorTuple = [
+  COLOR_PALETTE.black,
+  COLOR_PALETTE.red[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
+  COLOR_PALETTE.green[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
+  COLOR_PALETTE.blue[DEFAULT_ELEMENT_STROKE_COLOR_INDEX],
+  BOARD_COLORS.cobalt,
+];
 
 // ORDER matters for positioning in quick picker. Classic note colors; the
 // first one is `DEFAULT_STICKY_NOTE_BG`. Never transparent.
@@ -282,15 +305,11 @@ export const STICKY_NOTE_BACKGROUND_PICKS = [
 
 // ORDER matters for positioning in quick picker
 export const DEFAULT_CANVAS_BACKGROUND_PICKS = [
+  BOARD_COLORS.board,
+  BOARD_COLORS.night,
+  "#1c2f4f",
+  BOARD_COLORS.chalk,
   COLOR_PALETTE.white,
-  // radix slate2
-  "#f8f9fa",
-  // radix blue2
-  "#f5faff",
-  // radix yellow2
-  "#fffce8",
-  // radix bronze2
-  "#fdf8f6",
 ] as ColorTuple;
 
 // palette defaults

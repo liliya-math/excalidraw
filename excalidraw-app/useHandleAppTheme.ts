@@ -8,7 +8,15 @@ import { STORAGE_KEYS } from "./app_constants";
 const getDarkThemeMediaQuery = (): MediaQueryList | undefined =>
   window.matchMedia?.("(prefers-color-scheme: dark)");
 
+// lili.math: the board always uses the dark green "chalkboard" theme
 export const useHandleAppTheme = () => {
+  const editorTheme: Theme = THEME.DARK;
+  const appTheme: Theme | "system" = THEME.DARK;
+  const setAppTheme = (_theme: Theme | "system") => {};
+  return { editorTheme, appTheme, setAppTheme };
+};
+
+export const useHandleAppThemeOriginal = () => {
   const [appTheme, setAppTheme] = useState<Theme | "system">(() => {
     return (
       (localStorage.getItem(STORAGE_KEYS.LOCAL_STORAGE_THEME) as
