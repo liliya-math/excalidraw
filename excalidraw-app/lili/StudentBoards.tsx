@@ -64,10 +64,14 @@ export const StudentBoardBadge = () => {
     if (!roomId) {
       return null;
     }
-    return (
-      loadStudentBoards().find((b) => roomIdOf(b.link) === roomId)?.name ??
-      null
-    );
+    const saved = loadStudentBoards().find(
+      (b) => roomIdOf(b.link) === roomId,
+    )?.name;
+    // links made in the student cabinet carry the name: ?student=Маша
+    const fromLink = (
+      new URLSearchParams(window.location.search).get("student") || ""
+    ).trim();
+    return saved || fromLink || null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
   if (!name) {
@@ -106,7 +110,9 @@ export const StudentBoardsDialog = ({ onClose }: { onClose: () => void }) => {
     setBusy(true);
     try {
       const data = await generateCollaborationLinkData();
-      const link = getCollaborationLink(data);
+      const room = new URL(getCollaborationLink(data));
+      room.search = `?student=${encodeURIComponent(trimmed)}`;
+      const link = room.toString();
       const next = [{ name: trimmed, link, created: Date.now() }, ...boards];
       update(next);
       setName("");
