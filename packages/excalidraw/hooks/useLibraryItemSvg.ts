@@ -5,7 +5,13 @@ import { COLOR_PALETTE } from "@excalidraw/common";
 
 import { atom, useAtom } from "../editor-jotai";
 
-import type { LibraryItem } from "../types";
+import type { BinaryFiles, LibraryItem } from "../types";
+
+// lili.math: images (stickers) that library previews may reference
+let libraryPreviewFiles: BinaryFiles | null = null;
+export const setLibraryPreviewFiles = (files: BinaryFiles) => {
+  libraryPreviewFiles = files;
+};
 
 export type SvgCache = Map<LibraryItem["id"], SVGSVGElement>;
 
@@ -20,7 +26,7 @@ const exportLibraryItemToSvg = async (elements: LibraryItem["elements"]) => {
       exportBackground: false,
       viewBackgroundColor: COLOR_PALETTE.white,
     },
-    files: null,
+    files: libraryPreviewFiles,
     renderEmbeddables: false,
     skipInliningFonts: true,
   });

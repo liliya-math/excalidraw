@@ -1,4 +1,5 @@
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
+import { isBuiltinFileId, takeBuiltinFiles } from "../lili/builtinFiles";
 import { compressData } from "@excalidraw/excalidraw/data/encode";
 import { newElementWith } from "@excalidraw/element";
 import { isInitializedImageElement } from "@excalidraw/element";
@@ -104,6 +105,8 @@ export class FileManager {
 
       if (
         fileData &&
+        // lili.math: built-in stickers ship with the board, never upload them
+        !isBuiltinFileId(element.fileId) &&
         // NOTE if errored during save, won't retry due to this check
         !this.isFileSavedOrBeingSaved(fileData)
       ) {
@@ -146,6 +149,22 @@ export class FileManager {
       return {
         loadedFiles: [],
         erroredFiles: new Map(),
+      };
+    }
+    // lili.math: built-in stickers are served by the board itself
+    const { builtin, missing, rest } = await takeBuiltinFiles(ids);
+    if (builtin.length || missing.length) {
+      const restResult = await this.getFiles(rest);
+      for (const file of builtin) {
+        this.savedFiles.set(file.id, this.getFileVersion(file));
+      }
+      const erroredFiles = new Map(restResult.erroredFiles);
+      for (const id of missing) {
+        erroredFiles.set(id, true);
+      }
+      return {
+        loadedFiles: [...builtin, ...restResult.loadedFiles],
+        erroredFiles,
       };
     }
     for (const id of ids) {

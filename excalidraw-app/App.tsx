@@ -100,6 +100,9 @@ import Collab, {
   userToFollowAtom,
 } from "./collab/Collab";
 import { AppFooter } from "./components/AppFooter";
+import { loadBuiltinFiles } from "./lili/builtinFiles";
+import { buildLiliLibrary } from "./lili/library";
+import { setLibraryPreviewFiles } from "@excalidraw/excalidraw/hooks/useLibraryItemSvg";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import {
@@ -448,6 +451,34 @@ const ExcalidrawWrapper = () => {
     // TODO maybe remove this in several months (shipped: 24-03-11)
     migrationAdapter: LibraryLocalStorageMigrationAdapter,
   });
+
+  // lili.math: ship mascot stickers and math templates in the library
+  useEffect(() => {
+    if (!excalidrawAPI) {
+      return;
+    }
+    let cancelled = false;
+    loadBuiltinFiles().then((files) => {
+      if (cancelled) {
+        return;
+      }
+      setLibraryPreviewFiles(Object.fromEntries(files));
+      excalidrawAPI.addFiles([...files.values()]);
+      const liliItems = buildLiliLibrary();
+      excalidrawAPI
+        .updateLibrary({
+          libraryItems: (current) => {
+            const have = new Set(current.map((item) => item.id));
+            return liliItems.filter((item) => !have.has(item.id));
+          },
+          merge: true,
+        })
+        .catch((error) => console.error(error));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [excalidrawAPI]);
 
   const [, forceRefresh] = useState(false);
 
