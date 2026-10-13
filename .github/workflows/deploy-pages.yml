@@ -33,6 +33,7 @@ jobs:
         env:
           VITE_APP_DISABLE_SENTRY: "true"
           NODE_OPTIONS: --max-old-space-size=6144
+          VITE_APP_WS_SERVER_URL: https://194-87-93-232.sslip.io
         run: npx vite build --base=/${{ github.event.repository.name }}/
 
       - uses: actions/upload-pages-artifact@v3
