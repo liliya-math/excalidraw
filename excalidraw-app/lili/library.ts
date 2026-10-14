@@ -620,6 +620,305 @@ const quadraticCard = (): ExcalidrawElementSkeleton[] => [
   text(0, 48, "D = b² - 4ac", { fontSize: 24, strokeColor: BUTTER }),
 ];
 
+// ---- templates for grades 5–8 (lili.math) ----
+
+const rectangleABCD = () =>
+  polygon(
+    [
+      [0, 0],
+      [240, 0],
+      [240, 140],
+      [0, 140],
+    ],
+    [
+      { t: "A", dx: -22, dy: -6 },
+      { t: "B", dx: 8, dy: -6 },
+      { t: "C", dx: 8, dy: -6 },
+      { t: "D", dx: -22, dy: -6 },
+    ],
+  );
+
+const mixedNumber = (): ExcalidrawElementSkeleton[] => [
+  text(0, -8, "2", { fontSize: 32 }),
+  text(50, -48, "3", { fontSize: 32 }),
+  line(36, -8, [
+    [0, 0],
+    [44, 0],
+  ]),
+  text(50, 2, "8", { fontSize: 32 }),
+];
+
+const powerCard = (): ExcalidrawElementSkeleton[] => [
+  text(0, 0, "a² = a · a", { fontSize: 28 }),
+  text(0, 48, "a³ = a · a · a", { fontSize: 28 }),
+];
+
+const divisionRemainder = (): ExcalidrawElementSkeleton[] => [
+  text(0, 0, "17 : 5 = 3 (ост. 2)", { fontSize: 28 }),
+];
+
+const cube = (): ExcalidrawElementSkeleton[] => {
+  const s = 140;
+  const o = 50;
+  const f: [number, number][] = [
+    [0, 0],
+    [s, 0],
+    [s, s],
+    [0, s],
+  ];
+  const b: [number, number][] = f.map(([x, y]) => [x + o, y - o]);
+  const edge = (
+    p: [number, number],
+    q: [number, number],
+    extra: Record<string, unknown> = {},
+  ) =>
+    line(p[0], p[1], [
+      [0, 0],
+      [q[0] - p[0], q[1] - p[1]],
+    ], extra);
+  return [
+    // hidden edges (back-left, back-bottom, two rear connectors)
+    edge(b[3], b[0], { strokeStyle: "dashed" }),
+    edge(b[2], b[3], { strokeStyle: "dashed" }),
+    edge(f[3], b[3], { strokeStyle: "dashed" }),
+    edge(f[2], b[2], { strokeStyle: "dashed" }),
+    // visible back edges
+    edge(b[0], b[1]),
+    edge(b[1], b[2]),
+    // front-to-back connectors
+    edge(f[0], b[0]),
+    edge(f[1], b[1]),
+    // front square
+    edge(f[0], f[1]),
+    edge(f[1], f[2]),
+    edge(f[2], f[3]),
+    edge(f[3], f[0]),
+  ];
+};
+
+const pieChart = (): ExcalidrawElementSkeleton[] => {
+  const r = 110;
+  const pts: [number, number][] = [
+    [0, 0],
+    [0, -r],
+  ];
+  for (let i = 1; i <= 9; i++) {
+    const t = -Math.PI / 2 + (Math.PI / 2) * (i / 9);
+    pts.push([r * Math.cos(t), r * Math.sin(t)]);
+  }
+  pts.push([r, 0]);
+  return [
+    {
+      type: "ellipse",
+      x: -r,
+      y: -r,
+      width: r * 2,
+      height: r * 2,
+      ...base,
+    } as unknown as ExcalidrawElementSkeleton,
+    curve(pts, { backgroundColor: BUTTER, fillStyle: "solid" }),
+    text(r + 16, -10, "25 %", { fontSize: 18 }),
+  ];
+};
+
+const proportion = (): ExcalidrawElementSkeleton[] => [
+  text(0, 0, "a : b = c : d", { fontSize: 28 }),
+  text(0, 44, "крайние: a и d", { fontSize: 16, strokeColor: SAGE }),
+  text(0, 68, "средние: b и c", { fontSize: 16, strokeColor: SKY }),
+  text(0, 108, "ad = bc", { fontSize: 24, strokeColor: BUTTER }),
+];
+
+const moduleLine = (): ExcalidrawElementSkeleton[] => {
+  const step = 40;
+  const at = (v: number) => (v + 5) * step;
+  return [
+    ...numberLineFull(),
+    dot(at(-2), -16, 4),
+    dot(at(2), -16, 4),
+    text(at(-2) - 5, -44, "A", { fontSize: 16 }),
+    text(at(2) - 5, -44, "B", { fontSize: 16 }),
+    text(0, 64, "|AB| = |x₂ - x₁|", { fontSize: 22 }),
+  ];
+};
+
+const coordPoint = (): ExcalidrawElementSkeleton[] => {
+  const cell = 30;
+  const mid = (12 * cell) / 2;
+  const px = mid + 3 * cell;
+  const py = mid - 2 * cell;
+  return [
+    ...coordinatePlane(),
+    dot(px, py, 5, { backgroundColor: APRICOT }),
+    text(px + 12, py - 26, "A (3; 2)", { strokeColor: APRICOT }),
+  ];
+};
+
+const anglesCross = (): ExcalidrawElementSkeleton[] => {
+  const t1 = Math.atan2(80, 140);
+  const t2 = Math.atan2(-60, 140);
+  const m1 = (t1 + t2) / 2;
+  const m2 = (t1 + t2 + Math.PI) / 2;
+  const r = 52;
+  const at = (m: number): [number, number] => [
+    r * Math.cos(m) - 4,
+    r * Math.sin(m) - 8,
+  ];
+  return [
+    line(0, 0, [
+      [0, 0],
+      [140, 80],
+    ]),
+    line(0, 0, [
+      [0, 0],
+      [-140, -80],
+    ]),
+    line(0, 0, [
+      [0, 0],
+      [140, -60],
+    ]),
+    line(0, 0, [
+      [0, 0],
+      [-140, 60],
+    ]),
+    arc(0, 0, 30, t2, t1),
+    arc(0, 0, 30, t1, t2 + Math.PI),
+    arc(0, 0, 30, t2 + Math.PI, t1 + Math.PI),
+    arc(0, 0, 30, t1 + Math.PI, t2 + 2 * Math.PI),
+    text(...at(m1), "1", { fontSize: 16 }),
+    text(...at(m2), "2", { fontSize: 16 }),
+    text(...at(m1 + Math.PI), "3", { fontSize: 16 }),
+    text(...at(m2 + Math.PI), "4", { fontSize: 16 }),
+  ];
+};
+
+const angleBisector = (): ExcalidrawElementSkeleton[] => {
+  const b: [number, number] = [150, -80];
+  const c: [number, number] = [190, 15];
+  const d: [number, number] = [147, -31];
+  const tb = Math.atan2(b[1], b[0]);
+  const tc = Math.atan2(c[1], c[0]);
+  const td = Math.atan2(d[1], d[0]);
+  return [
+    line(0, 0, [
+      [0, 0],
+      b,
+    ]),
+    line(0, 0, [
+      [0, 0],
+      c,
+    ]),
+    line(0, 0, [
+      [0, 0],
+      d,
+    ], { strokeStyle: "dashed" }),
+    arc(0, 0, 40, tb, td),
+    arc(0, 0, 40, td, tc),
+    text(-22, -10, "A"),
+    text(b[0] + 6, b[1] - 12, "B"),
+    text(c[0] + 8, c[1] - 2, "C"),
+    text(d[0] + 2, d[1] - 26, "D"),
+  ];
+};
+
+const parallelSecant = (): ExcalidrawElementSkeleton[] => [
+  arrow(-20, -50, [
+    [0, 0],
+    [280, 0],
+  ]),
+  arrow(-20, 70, [
+    [0, 0],
+    [280, 0],
+  ]),
+  arrow(-30, 110, [
+    [0, 0],
+    [300, -240],
+  ]),
+  text(-14, -84, "a", { fontSize: 18 }),
+  text(-14, 84, "b", { fontSize: 18 }),
+  text(188, -80, "1", { fontSize: 16 }),
+  text(140, -72, "2", { fontSize: 16 }),
+  text(40, 42, "3", { fontSize: 16 }),
+  text(-2, 96, "4", { fontSize: 16 }),
+];
+
+const equationSystem = (): ExcalidrawElementSkeleton[] => [
+  curve(
+    [
+      [0, 0],
+      [-10, 6],
+      [-18, 16],
+      [-20, 25],
+      [-24, 50],
+      [-20, 75],
+      [-18, 84],
+      [-10, 94],
+      [0, 100],
+    ],
+    { strokeWidth: 2 },
+  ),
+  text(8, 4, "x + y = 5", { fontSize: 24 }),
+  text(8, 56, "2x - y = 1", { fontSize: 24 }),
+];
+
+const pythagoras = (): ExcalidrawElementSkeleton[] => [
+  ...rightTriangle(),
+  text(112, 196, "a", { fontSize: 20 }),
+  text(-34, 80, "b", { fontSize: 20 }),
+  text(140, 56, "c", { fontSize: 20 }),
+  text(280, 30, "c² = a² + b²", { fontSize: 24, strokeColor: BUTTER }),
+];
+
+const circleTangent = (): ExcalidrawElementSkeleton[] => [
+  {
+    type: "ellipse",
+    x: 0,
+    y: 0,
+    width: 220,
+    height: 220,
+    ...base,
+  } as unknown as ExcalidrawElementSkeleton,
+  line(-20, 0, [
+    [0, 0],
+    [260, 0],
+  ]),
+  line(110, 110, [
+    [0, 0],
+    [0, -110],
+  ], { strokeStyle: "dashed" }),
+  line(110, 22, [
+    [0, 0],
+    [22, 0],
+    [22, 22],
+  ]),
+  dot(110, 110, 4),
+  dot(110, 0, 4),
+  text(118, 116, "O"),
+  text(118, -26, "T"),
+  text(-44, -24, "t", { fontSize: 18 }),
+];
+
+const trigRight = (): ExcalidrawElementSkeleton[] => [
+  ...rightTriangle(),
+  text(196, 138, "α", { fontSize: 20 }),
+  text(112, 196, "a", { fontSize: 20 }),
+  text(-34, 80, "b", { fontSize: 20 }),
+  text(140, 56, "c", { fontSize: 20 }),
+  text(280, 0, "sin α = a / c", { fontSize: 20 }),
+  text(280, 36, "cos α = b / c", { fontSize: 20 }),
+  text(280, 72, "tg α = a / b", { fontSize: 20 }),
+];
+
+const graphSqrt = (): ExcalidrawElementSkeleton[] => {
+  const pts: [number, number][] = [];
+  for (let x = 4; x <= 140; x += 8) {
+    pts.push([x, -14 * Math.sqrt(x)]);
+  }
+  return [
+    curve(pts, { strokeWidth: 2 }),
+    text(60, -170, "y = √x", { fontSize: 18 }),
+  ];
+};
+
 const givenFind = (): ExcalidrawElementSkeleton[] => [
   text(10, 0, "Дано:", { strokeColor: BUTTER }),
   text(10, 140, "Найти:", { strokeColor: BUTTER }),
@@ -672,6 +971,27 @@ const TEMPLATES: { id: string; name: string; build: () => ExcalidrawElementSkele
   { id: "graph-line", name: "График: прямая", build: graphLine },
   { id: "graph-parabola", name: "График: парабола", build: graphParabola },
   { id: "graph-hyperbola", name: "График: гипербола", build: graphHyperbola },
+  { id: "graph-sqrt", name: "График: y = √x", build: graphSqrt },
+  // 5 класс
+  { id: "rectangle", name: "Прямоугольник ABCD", build: rectangleABCD },
+  { id: "mixed-number", name: "Смешанная дробь", build: mixedNumber },
+  { id: "powers", name: "Квадрат и куб числа", build: powerCard },
+  { id: "remainder", name: "Деление с остатком", build: divisionRemainder },
+  { id: "cube", name: "Куб", build: cube },
+  { id: "pie", name: "Круговая диаграмма 25 %", build: pieChart },
+  // 6 класс
+  { id: "proportion", name: "Пропорция", build: proportion },
+  { id: "module-line", name: "Модуль: расстояние на прямой", build: moduleLine },
+  { id: "coord-point", name: "Точка A(3; 2) на плоскости", build: coordPoint },
+  // 7 класс
+  { id: "cross-angles", name: "Смежные и вертикальные углы", build: anglesCross },
+  { id: "bisector", name: "Биссектриса угла", build: angleBisector },
+  { id: "parallel", name: "Параллельные прямые и секущая", build: parallelSecant },
+  { id: "system", name: "Система уравнений", build: equationSystem },
+  // 8 класс
+  { id: "pythagoras", name: "Теорема Пифагора", build: pythagoras },
+  { id: "tangent", name: "Касательная к окружности", build: circleTangent },
+  { id: "trig", name: "Синус, косинус, тангенс", build: trigRight },
 ];
 
 const toItem = (

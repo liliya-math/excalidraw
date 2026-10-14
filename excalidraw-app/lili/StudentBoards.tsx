@@ -51,6 +51,35 @@ const openBoard = (link: string) => {
   window.location.reload();
 };
 
+/** finds the saved board for a student, or creates a new one.
+ *  Used by ?student=Name links from the student cabinet. */
+export const ensureStudentBoardLink = async (
+  name: string,
+): Promise<string | null> => {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const boards = loadStudentBoards();
+  const existing = boards.find(
+    (b) => b.name.toLowerCase() === trimmed.toLowerCase(),
+  );
+  if (existing) {
+    return existing.link;
+  }
+  try {
+    const data = await generateCollaborationLinkData();
+    const room = new URL(getCollaborationLink(data));
+    room.search = `?student=${encodeURIComponent(trimmed)}`;
+    const link = room.toString();
+    saveStudentBoards([{ name: trimmed, link, created: Date.now() }, ...boards]);
+    return link;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
 /** shows whose board is open, when the current room is a saved student board */
 export const StudentBoardBadge = () => {
   const [hash, setHash] = useState(window.location.hash);

@@ -101,7 +101,11 @@ import Collab, {
 } from "./collab/Collab";
 import { AppFooter } from "./components/AppFooter";
 import { loadBuiltinFiles } from "./lili/builtinFiles";
-import { StudentBoardBadge, StudentBoardsDialog } from "./lili/StudentBoards";
+import {
+  StudentBoardBadge,
+  StudentBoardsDialog,
+  ensureStudentBoardLink,
+} from "./lili/StudentBoards";
 import { buildLiliLibrary } from "./lili/library";
 import { setLibraryPreviewFiles } from "@excalidraw/excalidraw/hooks/useLibraryItemSvg";
 import { AppMainMenu } from "./components/AppMainMenu";
@@ -452,6 +456,28 @@ const ExcalidrawWrapper = () => {
     // TODO maybe remove this in several months (shipped: 24-03-11)
     migrationAdapter: LibraryLocalStorageMigrationAdapter,
   });
+
+  // lili.math: ?student=Name — open that student's board, creating it on first use
+  useEffect(() => {
+    if (window.location.hash.includes("room=")) {
+      return;
+    }
+    const student = (
+      new URLSearchParams(window.location.search).get("student") || ""
+    ).trim();
+    if (!student) {
+      return;
+    }
+    let alive = true;
+    ensureStudentBoardLink(student).then((link) => {
+      if (alive && link) {
+        window.location.assign(link);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // lili.math: ship mascot stickers and math templates in the library
   useEffect(() => {
