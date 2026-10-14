@@ -919,6 +919,198 @@ const graphSqrt = (): ExcalidrawElementSkeleton[] => {
   ];
 };
 
+// ---- templates grown from the 6th-grade diagnostic (lili.math) ----
+
+const motionDiagram = (): ExcalidrawElementSkeleton[] => [
+  line(0, 80, [
+    [0, 0],
+    [320, 0],
+  ], { strokeWidth: 3 }),
+  dot(0, 80),
+  dot(320, 80),
+  text(-26, 70, "A"),
+  text(330, 70, "B"),
+  arrow(14, 56, [
+    [0, 0],
+    [84, 0],
+  ]),
+  text(38, 30, "v₁", { fontSize: 18 }),
+  arrow(306, 56, [
+    [0, 0],
+    [-84, 0],
+  ]),
+  text(264, 30, "v₂", { fontSize: 18 }),
+  line(0, 112, [
+    [0, 0],
+    [320, 0],
+  ], { strokeStyle: "dashed" }),
+  line(0, 106, [
+    [0, 0],
+    [0, 12],
+  ]),
+  line(320, 106, [
+    [0, 0],
+    [0, 12],
+  ]),
+  text(152, 122, "S", { fontSize: 18 }),
+];
+
+const factorTree = (): ExcalidrawElementSkeleton[] => {
+  const prime = { strokeColor: APRICOT, fontSize: 20 };
+  const br = (x1: number, y1: number, x2: number, y2: number) =>
+    line(x1, y1, [
+      [0, 0],
+      [x2 - x1, y2 - y1],
+    ], { strokeWidth: 1 });
+  return [
+    text(94, -6, "36", { fontSize: 24 }),
+    br(110, 28, 60, 64),
+    br(110, 28, 160, 64),
+    text(48, 58, "4", { fontSize: 22 }),
+    text(154, 58, "9", { fontSize: 22 }),
+    br(60, 86, 34, 118),
+    br(60, 86, 68, 118),
+    br(160, 86, 142, 118),
+    br(160, 86, 176, 118),
+    text(24, 112, "2", prime),
+    text(58, 112, "2", prime),
+    text(132, 112, "3", prime),
+    text(166, 112, "3", prime),
+  ];
+};
+
+const powerLine = (): ExcalidrawElementSkeleton[] => [
+  text(0, 0, "aⁿ = a · a · … · a · a", { fontSize: 28 }),
+  text(0, 48, "2⁵ = 2 · 2 · 2 · 2 · 2 = 32", { fontSize: 20 }),
+  text(0, 86, "n — показатель: сколько раз умножаем", {
+    fontSize: 16,
+    strokeColor: SAGE,
+  }),
+];
+
+const circleFormulas = (): ExcalidrawElementSkeleton[] => [
+  {
+    type: "ellipse",
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+    ...base,
+  } as unknown as ExcalidrawElementSkeleton,
+  dot(100, 100, 4),
+  line(100, 100, [
+    [0, 0],
+    [100, 0],
+  ]),
+  text(140, 108, "R"),
+  text(240, 30, "C = 2πR", { fontSize: 22 }),
+  text(240, 74, "S = πR²", { fontSize: 22 }),
+  text(240, 118, "π ≈ 3,14", { fontSize: 16, strokeColor: SAGE }),
+];
+
+const axialSymmetry = (): ExcalidrawElementSkeleton[] => {
+  const ax = 150;
+  const tri: [number, number][] = [
+    [0, 20],
+    [90, 0],
+    [50, 100],
+  ];
+  const mir: [number, number][] = tri.map(([x, y]) => [2 * ax - x, y]);
+  const poly = (
+    pts: [number, number][],
+    extra: Record<string, unknown> = {},
+  ) =>
+    line(
+      pts[0][0],
+      pts[0][1],
+      [
+        ...pts.map(
+          (p) => [p[0] - pts[0][0], p[1] - pts[0][1]] as [number, number],
+        ),
+        [0, 0],
+      ],
+      extra,
+    );
+  return [
+    line(ax, -20, [
+      [0, 0],
+      [0, 160],
+    ], { strokeStyle: "dashed", strokeColor: BUTTER }),
+    text(ax + 8, -18, "l", { strokeColor: BUTTER }),
+    poly(tri),
+    poly(mir, { strokeStyle: "dashed" }),
+    text(-26, 12, "A"),
+    text(96, -10, "B"),
+    text(44, 96, "C"),
+    text(mir[0][0] + 10, 12, "A′"),
+    text(mir[1][0] - 30, -10, "B′"),
+    text(mir[2][0] - 24, 96, "C′"),
+    line(tri[0][0], tri[0][1], [
+      [0, 0],
+      [mir[0][0] - tri[0][0], 0],
+    ], { strokeWidth: 1, strokeStyle: "dashed" }),
+  ];
+};
+
+const solids3d = (): ExcalidrawElementSkeleton[] => {
+  const bottomArc = (cx: number, y: number, r: number, ry: number) => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i <= 10; i++) {
+      const t = (Math.PI * i) / 10;
+      pts.push([cx - r * Math.cos(t), y + ry * Math.sin(t)]);
+    }
+    return pts;
+  };
+  const equator: [number, number][] = [];
+  for (let i = 0; i <= 20; i++) {
+    const t = (2 * Math.PI * i) / 20;
+    equator.push([300 + 40 * Math.cos(t), 45 + 13 * Math.sin(t)]);
+  }
+  return [
+    // цилиндр
+    {
+      type: "ellipse",
+      x: 0,
+      y: 0,
+      width: 80,
+      height: 26,
+      ...base,
+    } as unknown as ExcalidrawElementSkeleton,
+    line(0, 13, [
+      [0, 0],
+      [0, 70],
+    ]),
+    line(80, 13, [
+      [0, 0],
+      [0, 70],
+    ]),
+    curve(bottomArc(40, 83, 40, 13)),
+    text(8, 112, "цилиндр", { fontSize: 14, strokeColor: SKY }),
+    // конус
+    line(170, 0, [
+      [0, 0],
+      [-40, 90],
+    ]),
+    line(170, 0, [
+      [0, 0],
+      [40, 90],
+    ]),
+    curve(bottomArc(170, 90, 40, 14)),
+    text(146, 112, "конус", { fontSize: 14, strokeColor: SKY }),
+    // шар
+    {
+      type: "ellipse",
+      x: 260,
+      y: 5,
+      width: 80,
+      height: 80,
+      ...base,
+    } as unknown as ExcalidrawElementSkeleton,
+    curve(equator, { strokeStyle: "dashed" }),
+    text(282, 112, "шар", { fontSize: 14, strokeColor: SKY }),
+  ];
+};
+
 const givenFind = (): ExcalidrawElementSkeleton[] => [
   text(10, 0, "Дано:", { strokeColor: BUTTER }),
   text(10, 140, "Найти:", { strokeColor: BUTTER }),
@@ -983,6 +1175,12 @@ const TEMPLATES: { id: string; name: string; build: () => ExcalidrawElementSkele
   { id: "proportion", name: "Пропорция", build: proportion },
   { id: "module-line", name: "Модуль: расстояние на прямой", build: moduleLine },
   { id: "coord-point", name: "Точка A(3; 2) на плоскости", build: coordPoint },
+  { id: "motion", name: "Движение: навстречу и вдогонку", build: motionDiagram },
+  { id: "factor-tree", name: "Разложение на множители", build: factorTree },
+  { id: "power-line", name: "Степень с показателем n", build: powerLine },
+  { id: "circle-fs", name: "Окружность и круг: формулы", build: circleFormulas },
+  { id: "symmetry", name: "Осевая симметрия", build: axialSymmetry },
+  { id: "solids", name: "Цилиндр, конус, шар", build: solids3d },
   // 7 класс
   { id: "cross-angles", name: "Смежные и вертикальные углы", build: anglesCross },
   { id: "bisector", name: "Биссектриса угла", build: angleBisector },
