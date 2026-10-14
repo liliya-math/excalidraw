@@ -124,6 +124,58 @@ export const StudentBoardsDialog = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  const rename = (board: StudentBoard) => {
+    const next = window.prompt("Новое имя доски:", board.name);
+    if (!next || !next.trim() || next.trim() === board.name) {
+      return;
+    }
+    update(
+      boards.map((b) =>
+        b === board ? { ...b, name: next.trim().slice(0, 60) } : b,
+      ),
+    );
+  };
+
+  const exportList = () => {
+    const blob = new Blob([JSON.stringify(boards, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "lili-boards.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importList = async (file: File) => {
+    try {
+      const list: unknown = JSON.parse(await file.text());
+      if (!Array.isArray(list)) {
+        throw new Error("bad file");
+      }
+      const map = new Map(boards.map((b) => [b.link, b]));
+      for (const raw of list) {
+        const b = raw as Partial<StudentBoard>;
+        if (
+          b &&
+          typeof b.name === "string" &&
+          typeof b.link === "string" &&
+          b.link.includes("#room=")
+        ) {
+          map.set(b.link, {
+            name: b.name.slice(0, 60),
+            link: b.link,
+            created: Number(b.created) || Date.now(),
+          });
+        }
+      }
+      update([...map.values()]);
+    } catch {
+      window.alert("Не получилось прочитать файл. Нужен JSON, выгруженный кнопкой «Экспорт».");
+    }
+  };
+
   const remove = (board: StudentBoard) => {
     if (
       window.confirm(
@@ -210,6 +262,14 @@ export const StudentBoardsDialog = ({ onClose }: { onClose: () => void }) => {
                     )}
                     <button
                       className="ghost"
+                      onClick={() => rename(board)}
+                      aria-label={`Переименовать ${board.name}`}
+                      title="Переименовать"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      className="ghost"
                       onClick={() => remove(board)}
                       aria-label={`Убрать ${board.name}`}
                     >
@@ -222,9 +282,29 @@ export const StudentBoardsDialog = ({ onClose }: { onClose: () => void }) => {
           </ul>
         )}
 
+        <div className="lili-boards__backup">
+          <button onClick={exportList}>Экспорт списка</button>
+          <label>
+            Импорт
+            <input
+              type="file"
+              accept="application/json"
+              style={{ display: "none" }}
+              onChange={(event) => {
+                const file = event.target.files && event.target.files[0];
+                if (file) {
+                  importList(file);
+                }
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+
         <p className="lili-boards__note">
-          Список хранится в этом браузере. Сохрани ссылки и у себя в кабинете
-          репетитора, чтобы не потерять их при смене компьютера.
+          Список хранится в этом браузере. Выгружай «Экспорт» и держи файл
+          рядом с кабинетом — тогда при смене компьютера доски восстановятся
+          кнопкой «Импорт».
         </p>
       </div>
     </div>

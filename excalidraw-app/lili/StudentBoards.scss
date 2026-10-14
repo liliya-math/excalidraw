@@ -155,6 +155,26 @@
   flex: none;
 }
 
+.lili-boards__backup {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+
+  label {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 1px solid #2b4239;
+    background: #24382f;
+    color: #f3ece2;
+    padding: 7px 12px;
+    font-size: 0.9rem;
+  }
+  label:hover {
+    background: #2b4239;
+  }
+}
+
 .lili-board-badge {
   position: fixed;
   left: 50%;

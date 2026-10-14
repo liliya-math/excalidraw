@@ -100,6 +100,74 @@ const grid = (cols: number, rows: number, cell: number, opacity: number) => {
   return out;
 };
 
+const SAGE = "#a9d18e";
+const SKY = "#9db8ff";
+const MISS = "#ff8f73";
+
+const rect = (
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  extra: Record<string, unknown> = {},
+): ExcalidrawElementSkeleton =>
+  ({
+    type: "rectangle",
+    x,
+    y,
+    width: w,
+    height: h,
+    ...base,
+    ...extra,
+  } as unknown as ExcalidrawElementSkeleton);
+
+const dot = (
+  cx: number,
+  cy: number,
+  r = 4,
+  extra: Record<string, unknown> = {},
+): ExcalidrawElementSkeleton =>
+  ({
+    type: "ellipse",
+    x: cx - r,
+    y: cy - r,
+    width: r * 2,
+    height: r * 2,
+    ...base,
+    backgroundColor: CHALK,
+    fillStyle: "solid",
+    ...extra,
+  } as unknown as ExcalidrawElementSkeleton);
+
+const curve = (
+  points: [number, number][],
+  extra: Record<string, unknown> = {},
+): ExcalidrawElementSkeleton =>
+  ({
+    type: "draw",
+    x: 0,
+    y: 0,
+    points,
+    ...size(points),
+    ...base,
+    ...extra,
+  } as unknown as ExcalidrawElementSkeleton);
+
+const arc = (
+  cx: number,
+  cy: number,
+  r: number,
+  a1: number,
+  a2: number,
+): ExcalidrawElementSkeleton => {
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= 12; i++) {
+    const t = a1 + ((a2 - a1) * i) / 12;
+    pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]);
+  }
+  return curve(pts);
+};
+
 const coordinatePlane = (): ExcalidrawElementSkeleton[] => {
   const cell = 30;
   const n = 12;
@@ -248,6 +316,310 @@ const parallelogram = () =>
     ],
   );
 
+// ---- new templates (lili.math) ----
+
+const fraction = (): ExcalidrawElementSkeleton[] => [
+  text(14, -48, "3", { fontSize: 32 }),
+  line(0, -8, [
+    [0, 0],
+    [48, 0],
+  ]),
+  text(14, 2, "8", { fontSize: 32 }),
+];
+
+const dataTable = (): ExcalidrawElementSkeleton[] => {
+  const w = 240,
+    h = 120,
+    rh = 30,
+    cw = 80;
+  const out: ExcalidrawElementSkeleton[] = [
+    rect(0, 0, w, h, { strokeWidth: 1 }),
+  ];
+  for (let i = 1; i < 3; i++) {
+    out.push(
+      line(i * cw, 0, [
+        [0, 0],
+        [0, h],
+      ], { strokeWidth: 1 }),
+    );
+  }
+  for (let j = 1; j < 4; j++) {
+    out.push(
+      line(0, j * rh, [
+        [0, 0],
+        [w, 0],
+      ], { strokeWidth: 1 }),
+    );
+  }
+  return out;
+};
+
+const angleBAC = (): ExcalidrawElementSkeleton[] => {
+  const b: [number, number] = [150, -80];
+  const c: [number, number] = [190, 15];
+  return [
+    line(0, 0, [
+      [0, 0],
+      b,
+    ]),
+    line(0, 0, [
+      [0, 0],
+      c,
+    ]),
+    arc(0, 0, 52, Math.atan2(b[1], b[0]), Math.atan2(c[1], c[0])),
+    text(-22, -10, "A"),
+    text(b[0] + 6, b[1] - 12, "B"),
+    text(c[0] + 8, c[1] - 2, "C"),
+  ];
+};
+
+const squareABCD = () =>
+  polygon(
+    [
+      [0, 0],
+      [150, 0],
+      [150, 150],
+      [0, 150],
+    ],
+    [
+      { t: "A", dx: -22, dy: -6 },
+      { t: "B", dx: 8, dy: -6 },
+      { t: "C", dx: 8, dy: -6 },
+      { t: "D", dx: -22, dy: -6 },
+    ],
+  );
+
+const segmentAB = (): ExcalidrawElementSkeleton[] => [
+  line(0, 0, [
+    [0, 0],
+    [220, 0],
+  ], { strokeWidth: 3 }),
+  dot(0, 0),
+  dot(220, 0),
+  text(-26, -10, "A"),
+  text(228, -10, "B"),
+];
+
+const triangleHeight = (): ExcalidrawElementSkeleton[] => [
+  ...polygon(
+    [
+      [0, 170],
+      [240, 170],
+      [90, 0],
+    ],
+    [
+      { t: "A", dx: -22, dy: -6 },
+      { t: "B", dx: 8, dy: -6 },
+      { t: "C", dx: -6, dy: -30 },
+    ],
+  ),
+  line(90, 0, [
+    [0, 0],
+    [0, 170],
+  ], { strokeStyle: "dashed" }),
+  line(90, 150, [
+    [0, 0],
+    [20, 0],
+    [20, 20],
+  ]),
+  text(96, 60, "h", { fontSize: 16 }),
+];
+
+const inscribedAngle = (): ExcalidrawElementSkeleton[] => {
+  const cx = 110,
+    cy = 110,
+    r = 110;
+  const pt = (deg: number): [number, number] => [
+    cx + r * Math.cos((deg * Math.PI) / 180),
+    cy + r * Math.sin((deg * Math.PI) / 180),
+  ];
+  const a = pt(-90),
+    b = pt(180),
+    c = pt(35);
+  return [
+    {
+      type: "ellipse",
+      x: 0,
+      y: 0,
+      width: 220,
+      height: 220,
+      ...base,
+    } as unknown as ExcalidrawElementSkeleton,
+    dot(cx, cy),
+    text(cx + 8, cy + 6, "O"),
+    line(b[0], b[1], [
+      [0, 0],
+      [c[0] - b[0], c[1] - b[1]],
+    ]),
+    line(a[0], a[1], [
+      [0, 0],
+      [b[0] - a[0], b[1] - a[1]],
+    ]),
+    line(a[0], a[1], [
+      [0, 0],
+      [c[0] - a[0], c[1] - a[1]],
+    ]),
+    dot(a[0], a[1]),
+    dot(b[0], b[1]),
+    dot(c[0], c[1]),
+    text(a[0] - 4, a[1] - 26, "A"),
+    text(b[0] - 24, b[1] - 6, "B"),
+    text(c[0] + 8, c[1] - 4, "C"),
+  ];
+};
+
+const eulerCircles = (): ExcalidrawElementSkeleton[] => [
+  {
+    type: "ellipse",
+    x: 0,
+    y: 0,
+    width: 170,
+    height: 115,
+    ...base,
+    strokeColor: BUTTER,
+  } as unknown as ExcalidrawElementSkeleton,
+  {
+    type: "ellipse",
+    x: 120,
+    y: 0,
+    width: 170,
+    height: 115,
+    ...base,
+    strokeColor: SKY,
+  } as unknown as ExcalidrawElementSkeleton,
+  text(28, 18, "A", { strokeColor: BUTTER }),
+  text(238, 18, "B", { strokeColor: SKY }),
+];
+
+const probabilityTree = (): ExcalidrawElementSkeleton[] => {
+  const nodes: [number, number][] = [
+    [110, 0],
+    [40, 130],
+    [180, 130],
+    [0, 260],
+    [80, 260],
+    [140, 260],
+    [220, 260],
+  ];
+  const edges: [number, number][] = [
+    [0, 1],
+    [0, 2],
+    [1, 3],
+    [1, 4],
+    [2, 5],
+    [2, 6],
+  ];
+  const out: ExcalidrawElementSkeleton[] = edges.map(([f, t]) =>
+    line(nodes[f][0] + 4, nodes[f][1] + 4, [
+      [0, 0],
+      [nodes[t][0] - nodes[f][0], nodes[t][1] - nodes[f][1]],
+    ], { strokeWidth: 1 }),
+  );
+  nodes.forEach((n) => out.push(dot(n[0], n[1], 5)));
+  out.push(
+    text(48, 52, "0,5", { fontSize: 16 }),
+    text(142, 52, "0,5", { fontSize: 16 }),
+  );
+  return out;
+};
+
+const barChart = (): ExcalidrawElementSkeleton[] => [
+  line(0, 200, [
+    [0, 0],
+    [280, 0],
+  ], { strokeWidth: 2 }),
+  line(0, 0, [
+    [0, 0],
+    [0, 200],
+  ], { strokeWidth: 2 }),
+  rect(40, 80, 50, 120, {
+    backgroundColor: SAGE,
+    fillStyle: "solid",
+    strokeWidth: 1,
+  }),
+  rect(120, 120, 50, 80, {
+    backgroundColor: BUTTER,
+    fillStyle: "solid",
+    strokeWidth: 1,
+  }),
+  rect(200, 40, 50, 160, {
+    backgroundColor: MISS,
+    fillStyle: "solid",
+    strokeWidth: 1,
+  }),
+];
+
+const numberLineFull = (): ExcalidrawElementSkeleton[] => {
+  const step = 40,
+    len = step * 11;
+  const out: ExcalidrawElementSkeleton[] = [
+    {
+      type: "arrow",
+      x: 0,
+      y: 0,
+      points: [
+        [0, 0],
+        [len, 0],
+      ],
+      width: len,
+      height: 0,
+      ...base,
+      startArrowhead: "triangle",
+      endArrowhead: "triangle",
+    } as unknown as ExcalidrawElementSkeleton,
+  ];
+  for (let i = 1; i <= 10; i++) {
+    out.push(
+      line(i * step, -7, [
+        [0, 0],
+        [0, 14],
+      ]),
+    );
+  }
+  for (let v = -3; v <= 3; v++) {
+    out.push(
+      text((v + 5) * step - (v < 0 ? 10 : 5), 16, String(v), { fontSize: 16 }),
+    );
+  }
+  out.push(text(len + 8, -6, "x"));
+  return out;
+};
+
+const graphLine = (): ExcalidrawElementSkeleton[] => [
+  line(0, 60, [
+    [0, 0],
+    [220, -120],
+  ], { strokeWidth: 2 }),
+  text(150, 10, "y = kx + m", { fontSize: 18 }),
+];
+
+const graphParabola = (): ExcalidrawElementSkeleton[] => {
+  const pts: [number, number][] = [];
+  for (let x = -90; x <= 90; x += 10) {
+    pts.push([x, (x * x) / 70]);
+  }
+  return [curve(pts, { strokeWidth: 2 }), text(60, 128, "y = x²", { fontSize: 18 })];
+};
+
+const graphHyperbola = (): ExcalidrawElementSkeleton[] => {
+  const b1: [number, number][] = [];
+  const b2: [number, number][] = [];
+  for (let x = 14; x <= 140; x += 8) {
+    b1.push([x, 900 / x]);
+    b2.push([-x, -900 / x]);
+  }
+  return [
+    curve(b1, { strokeWidth: 2 }),
+    curve(b2, { strokeWidth: 2 }),
+    text(30, 150, "y = k/x", { fontSize: 18 }),
+  ];
+};
+
+const quadraticCard = (): ExcalidrawElementSkeleton[] => [
+  text(0, 0, "ax² + bx + c = 0", { fontSize: 28 }),
+  text(0, 48, "D = b² - 4ac", { fontSize: 24, strokeColor: BUTTER }),
+];
+
 const givenFind = (): ExcalidrawElementSkeleton[] => [
   text(10, 0, "Дано:", { strokeColor: BUTTER }),
   text(10, 140, "Найти:", { strokeColor: BUTTER }),
@@ -279,12 +651,27 @@ const TEMPLATES: { id: string; name: string; build: () => ExcalidrawElementSkele
   { id: "coord", name: "Координатная плоскость", build: coordinatePlane },
   { id: "grid", name: "Клетчатое поле", build: gridPaper },
   { id: "numline", name: "Числовая прямая", build: numberLine },
+  { id: "numline-full", name: "Числовая прямая с отрицательными", build: numberLineFull },
   { id: "given", name: "Дано / Найти / Решение", build: givenFind },
+  { id: "fraction", name: "Дробь", build: fraction },
+  { id: "table", name: "Таблица 3×4", build: dataTable },
+  { id: "quadratic", name: "Квадратное уравнение", build: quadraticCard },
   { id: "triangle", name: "Треугольник ABC", build: triangle },
   { id: "right-triangle", name: "Прямоугольный треугольник", build: rightTriangle },
+  { id: "triangle-height", name: "Высота треугольника", build: triangleHeight },
   { id: "circle", name: "Окружность с центром O", build: circle },
+  { id: "inscribed", name: "Вписанный угол", build: inscribedAngle },
   { id: "trapezoid", name: "Трапеция ABCD", build: trapezoid },
   { id: "parallelogram", name: "Параллелограмм ABCD", build: parallelogram },
+  { id: "square", name: "Квадрат ABCD", build: squareABCD },
+  { id: "segment", name: "Отрезок AB", build: segmentAB },
+  { id: "angle", name: "Угол BAC", build: angleBAC },
+  { id: "euler", name: "Круги Эйлера", build: eulerCircles },
+  { id: "prob-tree", name: "Дерево вероятностей", build: probabilityTree },
+  { id: "bars", name: "Столбчатая диаграмма", build: barChart },
+  { id: "graph-line", name: "График: прямая", build: graphLine },
+  { id: "graph-parabola", name: "График: парабола", build: graphParabola },
+  { id: "graph-hyperbola", name: "График: гипербола", build: graphHyperbola },
 ];
 
 const toItem = (
