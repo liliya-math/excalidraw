@@ -327,6 +327,56 @@ const fraction = (): ExcalidrawElementSkeleton[] => [
   text(14, 2, "8", { fontSize: 32 }),
 ];
 
+// пицца, разрезанная на 8 частей, 3 куска подсвечены — для темы «Дроби»
+const pizzaFraction = (): ExcalidrawElementSkeleton[] => {
+  const cx = 100,
+    cy = 100,
+    r = 80;
+  const out: ExcalidrawElementSkeleton[] = [];
+  // закрашенные 3 куска (от верхнего радиуса по часовой)
+  const a0 = -Math.PI / 2;
+  const wedge: [number, number][] = [
+    [cx, cy],
+    ...Array.from({ length: 13 }, (_, i) => {
+      const t = a0 + ((3 * Math.PI) / 4) * (i / 12);
+      return [cx + r * Math.cos(t), cy + r * Math.sin(t)] as [number, number];
+    }),
+    [cx, cy],
+  ];
+  out.push(
+    curve(wedge, {
+      backgroundColor: APRICOT,
+      strokeColor: APRICOT,
+      fillStyle: "solid",
+      opacity: 70,
+      roughness: 0,
+    }),
+  );
+  // контур пиццы и 8 долей
+  out.push({
+    type: "ellipse",
+    x: cx - r,
+    y: cy - r,
+    width: r * 2,
+    height: r * 2,
+    ...base,
+  } as unknown as ExcalidrawElementSkeleton);
+  for (let i = 0; i < 8; i++) {
+    const t = a0 + (i * Math.PI) / 4;
+    out.push(
+      line(cx, cy, [
+        [0, 0],
+        [r * Math.cos(t), r * Math.sin(t)],
+      ]),
+    );
+  }
+  // подписи
+  out.push(text(205, 55, "3/8", { fontSize: 36, strokeColor: BUTTER }));
+  out.push(text(205, 105, "снизу 8 — на сколько резали", { fontSize: 16 }));
+  out.push(text(205, 130, "сверху 3 — сколько взяли", { fontSize: 16 }));
+  return out;
+};
+
 const dataTable = (): ExcalidrawElementSkeleton[] => {
   const w = 240,
     h = 120,
@@ -1145,6 +1195,7 @@ const TEMPLATES: { id: string; name: string; build: () => ExcalidrawElementSkele
   { id: "numline-full", name: "Числовая прямая с отрицательными", build: numberLineFull },
   { id: "given", name: "Дано / Найти / Решение", build: givenFind },
   { id: "fraction", name: "Дробь", build: fraction },
+  { id: "pizza-frac", name: "Дроби · пицца 3/8", build: pizzaFraction },
   { id: "table", name: "Таблица 3×4", build: dataTable },
   { id: "quadratic", name: "Квадратное уравнение", build: quadraticCard },
   { id: "triangle", name: "Треугольник ABC", build: triangle },
