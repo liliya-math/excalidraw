@@ -57,10 +57,9 @@ module.exports.woff2BrowserPlugin = () => {
         return code.replace(
           "<!-- PLACEHOLDER:EXCALIDRAW_APP_FONTS -->",
           `<script>
-        // fonts live next to index.html (e.g. /excalidraw/fonts/...)
-        window.EXCALIDRAW_ASSET_PATH =
-          window.location.origin +
-          window.location.pathname.replace(/[^/]*$/, "");
+        // font urls in the build already include the vite base path
+        // (e.g. /excalidraw/fonts/...), so the asset root is the site origin
+        window.EXCALIDRAW_ASSET_PATH = window.location.origin + "/";
       </script>
 
       <!-- Preload the default drawing font to avoid swap on init -->
