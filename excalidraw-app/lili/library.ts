@@ -144,7 +144,7 @@ const curve = (
   extra: Record<string, unknown> = {},
 ): ExcalidrawElementSkeleton =>
   ({
-    type: "draw",
+    type: "line",
     x: 0,
     y: 0,
     points,
