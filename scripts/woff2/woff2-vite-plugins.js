@@ -22,7 +22,7 @@ module.exports.woff2BrowserPlugin = () => {
 
       @font-face {
         font-family: "Assistant";
-        src: url(./Assistant-Regular.woff2) format("woff2");
+        src: url(./Assistant/Assistant-Regular.woff2) format("woff2");
         font-weight: 400;
         style: normal;
         display: swap;
@@ -30,7 +30,7 @@ module.exports.woff2BrowserPlugin = () => {
 
       @font-face {
         font-family: "Assistant";
-        src: url(./Assistant-Medium.woff2) format("woff2");
+        src: url(./Assistant/Assistant-Medium.woff2) format("woff2");
         font-weight: 500;
         style: normal;
         display: swap;
@@ -38,7 +38,7 @@ module.exports.woff2BrowserPlugin = () => {
 
       @font-face {
         font-family: "Assistant";
-        src: url(./Assistant-SemiBold.woff2) format("woff2");
+        src: url(./Assistant/Assistant-SemiBold.woff2) format("woff2");
         font-weight: 600;
         style: normal;
         display: swap;
@@ -46,7 +46,7 @@ module.exports.woff2BrowserPlugin = () => {
 
       @font-face {
         font-family: "Assistant";
-        src: url(./Assistant-Bold.woff2) format("woff2");
+        src: url(./Assistant/Assistant-Bold.woff2) format("woff2");
         font-weight: 700;
         style: normal;
         display: swap;
