@@ -16,4 +16,5 @@ jobs:
       - name: Install and test
         run: |
           yarn install
+          node --test lili-server/*.node-test.cjs
           yarn test:app
