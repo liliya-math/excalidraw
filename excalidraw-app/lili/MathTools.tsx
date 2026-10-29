@@ -4,7 +4,7 @@ import {
   convertToExcalidrawElements,
 } from "@excalidraw/excalidraw";
 
-import { newElementWith, getCommonBounds } from "@excalidraw/element";
+import { newElementWith } from "@excalidraw/element";
 
 import { stringToBase64 } from "@excalidraw/excalidraw/data/encode";
 
@@ -16,6 +16,7 @@ import type {
 import type { FileId } from "@excalidraw/element/types";
 
 import { graphSVG } from "./graph";
+import { lessonPlacement, addLessonElements } from "./lesson-model";
 
 import "./MathTools.scss";
 
@@ -125,13 +126,9 @@ export const MathTools = ({
   ) => {
     const owner = doc();
     const win = owner.defaultView!;
-    const state = api.getAppState();
-    const x = state.width / 2 / state.zoom.value - state.scrollX;
-    const existing = api.getSceneElements();
-    let y = state.height / 2 / state.zoom.value - state.scrollY;
-    if (existing.length) {
-      y = Math.max(y, getCommonBounds(existing)[3] + 60);
-    }
+    const place = lessonPlacement(api, images[0]?.width || 600);
+    const x = place.x;
+    let y = place.y;
     const files: BinaryFileData[] = [];
     const skeletons = images.map((image) => {
       const fileId = win.crypto.randomUUID() as FileId;
@@ -147,7 +144,8 @@ export const MathTools = ({
       const item = {
         type: "image" as const,
         fileId,
-        x: x - image.width / 2,
+        x,
+        frameId: place.frameId,
         y,
         width: image.width,
         height: image.height,
@@ -184,19 +182,7 @@ export const MathTools = ({
       });
       return;
     }
-    // PDF pages sit behind existing writing; other inserts sit on top.
-    api.updateScene({
-      appState: { selectedElementIds: {} },
-      elements: images[0]?.locked
-        ? [...elements, ...current]
-        : [...current, ...elements],
-      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-    });
-    api.setViewport({
-      target: elements[0],
-      fit: "scale-down",
-      animation: true,
-    });
+    addLessonElements(api, skeletons);
   };
   const run = async (action: () => Promise<void>) => {
     setBusy(true);

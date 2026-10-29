@@ -110,6 +110,9 @@ import {
 } from "./lili/StudentBoards";
 import { buildLiliLibrary } from "./lili/library";
 import { MathTools } from "./lili/MathTools";
+import { LessonWorkspace } from "./lili/LessonWorkspace";
+import { enforceProtection, initWorkspace } from "./lili/workspace";
+import { trustedMaterialURL } from "./lili/materials";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import {
@@ -473,7 +476,15 @@ const ExcalidrawWrapper = () => {
     let alive = true;
     ensureStudentBoardLink(student).then((link) => {
       if (alive && link) {
-        window.location.assign(link);
+        const target = new URL(link);
+        const params = new URLSearchParams(window.location.search);
+        for (const field of ["material", "materialTitle"]) {
+          const value = params.get(field);
+          if (value) {
+            target.searchParams.set(field, value);
+          }
+        }
+        window.location.assign(target.toString());
       }
     });
     return () => {
@@ -512,6 +523,16 @@ const ExcalidrawWrapper = () => {
   const [, forceRefresh] = useState(false);
   const [studentBoardsOpen, setStudentBoardsOpen] = useState(false);
   const [mathToolsOpen, setMathToolsOpen] = useState(false);
+  const workspaceRoot = useCallback((node: HTMLDivElement | null) => {
+    const win = node?.ownerDocument.defaultView;
+    if (win) {
+      initWorkspace(win);
+    }
+  }, []);
+  const [simpleMode, setSimpleMode] = useState(false);
+  const [workspaceAccess, setWorkspaceAccess] = useState<
+    "teacher" | "student" | "visitor" | null
+  >(null);
 
   useEffect(() => {
     if (isDevEnv()) {
@@ -778,6 +799,14 @@ const ExcalidrawWrapper = () => {
     appState: AppState,
     files: BinaryFiles,
   ) => {
+    const guarded = enforceProtection(elements);
+    if (guarded !== elements && excalidrawAPI) {
+      excalidrawAPI.updateScene({
+        elements: guarded,
+        captureUpdate: CaptureUpdateAction.NEVER,
+      });
+      return;
+    }
     if (collabAPI?.isCollaborating()) {
       collabAPI.syncElements(elements);
     }
@@ -1002,11 +1031,17 @@ const ExcalidrawWrapper = () => {
   return (
     <div
       style={{ height: "100%" }}
+      ref={workspaceRoot}
       className={clsx("excalidraw-app", {
         "is-collaborating": isCollaborating,
+        "lili-simple": simpleMode,
       })}
     >
       <Excalidraw
+        viewModeEnabled={workspaceAccess === "visitor" ? true : undefined}
+        validateEmbeddable={(link) =>
+          trustedMaterialURL(link) ? true : undefined
+        }
         viewportStatusFrame={viewportStatusFrame}
         userToFollow={userToFollow}
         onChange={onChange}
@@ -1123,6 +1158,15 @@ const ExcalidrawWrapper = () => {
         </OverwriteConfirmDialog>
         <AppFooter onChange={() => excalidrawAPI?.refresh()} />
         <StudentBoardBadge />
+        {excalidrawAPI && (
+          <LessonWorkspace
+            api={excalidrawAPI}
+            collab={collabAPI}
+            following={userToFollow}
+            onSimpleMode={setSimpleMode}
+            onAccess={setWorkspaceAccess}
+          />
+        )}
         {mathToolsOpen && excalidrawAPI && (
           <MathTools
             api={excalidrawAPI}

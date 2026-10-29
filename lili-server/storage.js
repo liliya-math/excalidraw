@@ -21,8 +21,8 @@ const send = (res, status, body, type = "application/json") => {
   res.writeHead(status, {
     "Content-Type": type,
     "Access-Control-Allow-Origin": ORIGIN,
-    "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, PUT, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Cache-Control": "no-store",
   });
   res.end(
@@ -65,13 +65,14 @@ const withLock = async (key, fn) => {
   const prev = locks.get(key) || Promise.resolve();
   let release;
   const next = new Promise((r) => (release = r));
-  locks.set(key, prev.then(() => next));
+  const queued = prev.then(() => next);
+  locks.set(key, queued);
   await prev;
   try {
     return await fn();
   } finally {
     release();
-    if (locks.get(key) === next) {
+    if (locks.get(key) === queued) {
       locks.delete(key);
     }
   }
@@ -85,6 +86,8 @@ const readScene = (file) => {
   }
 };
 
+const workspace = require("./workspace")({ DATA, send, readBody, readScene, writeAtomic, withLock });
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "OPTIONS") {
@@ -92,6 +95,7 @@ const server = http.createServer(async (req, res) => {
     }
     const url = new URL(req.url, "http://x");
     const parts = url.pathname.split("/").filter(Boolean);
+    if (await workspace.handle(req, res, parts)) return;
     if (parts[0] !== "storage") {
       return send(res, 404, { error: "not found" });
     }
@@ -107,6 +111,7 @@ const server = http.createServer(async (req, res) => {
         return scene ? send(res, 200, scene) : send(res, 404, { error: "none" });
       }
       if (req.method === "PUT") {
+        if (!workspace.canWrite(req, rest[0])) return send(res, 403, { error: "room access required" });
         const expected = Number(url.searchParams.get("rev") || 0);
         const body = JSON.parse((await readBody(req, MAX_SCENE)).toString());
         if (
@@ -129,6 +134,7 @@ const server = http.createServer(async (req, res) => {
             ciphertext: body.ciphertext,
             updated: new Date().toISOString(),
           };
+          workspace.snapshot(rest[0], current);
           writeAtomic(file, JSON.stringify(next));
           return send(res, 200, { rev: next.rev });
         });
@@ -145,7 +151,10 @@ const server = http.createServer(async (req, res) => {
         return send(res, 200, fs.readFileSync(file), "application/octet-stream");
       }
       if (req.method === "PUT") {
+        const room = rest[0] === "files" && rest[1] === "rooms" ? rest[2] : null;
+        if (room && !workspace.canWrite(req, room)) return send(res, 403, { error: "room access required" });
         const body = await readBody(req, MAX_FILE);
+        if (room && fs.existsSync(file) && !workspace.canReplaceFile(req, room) && !fs.readFileSync(file).equals(body)) return send(res, 403, { error: "immutable file" });
         fs.mkdirSync(dir, { recursive: true });
         writeAtomic(file, body);
         return send(res, 200, { ok: true });
@@ -159,5 +168,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`lili storage on ${PORT}, data in ${DATA}`);
+  console.log(`lili storage on ${server.address().port}, data in ${DATA}`);
 });

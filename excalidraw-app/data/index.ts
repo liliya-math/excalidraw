@@ -29,6 +29,8 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { MakeBrand } from "@excalidraw/common/utility-types";
 
+import { decorateInvite } from "../lili/workspace";
+
 import {
   DELETED_ELEMENT_TIMEOUT,
   FILE_UPLOAD_MAX_BYTES,
@@ -37,6 +39,8 @@ import {
 
 import { encodeFilesForUpload } from "./FileManager";
 import { saveFilesToFirebase } from "./firebase";
+
+import type { LessonSignal } from "../lili/lesson-signal";
 
 import type { WS_SUBTYPES } from "../app_constants";
 
@@ -77,6 +81,7 @@ export type EncryptedData = {
 };
 
 export type SocketUpdateDataSource = {
+  LESSON_SIGNAL: { type: WS_SUBTYPES.LESSON_SIGNAL; payload: LessonSignal };
   INVALID_RESPONSE: {
     type: WS_SUBTYPES.INVALID_RESPONSE;
   };
@@ -128,7 +133,8 @@ export type SocketUpdateData =
     _brand: "socketUpdateData";
   };
 
-const RE_COLLAB_LINK = /^#room=([a-zA-Z0-9_-]+),([a-zA-Z0-9_-]+)$/;
+const RE_COLLAB_LINK =
+  /^#room=([a-zA-Z0-9_-]+),([a-zA-Z0-9_-]+)(?:;(?:teacher|student)=[a-zA-Z0-9_-]{32,128})?$/;
 
 export const isCollaborationLink = (link: string) => {
   const hash = new URL(link).hash;
@@ -160,7 +166,10 @@ export const getCollaborationLink = (data: {
   roomId: string;
   roomKey: string;
 }) => {
-  return `${window.location.origin}${window.location.pathname}#room=${data.roomId},${data.roomKey}`;
+  return decorateInvite(
+    data.roomId,
+    `${window.location.origin}${window.location.pathname}#room=${data.roomId},${data.roomKey}`,
+  );
 };
 
 /**

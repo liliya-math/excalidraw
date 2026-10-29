@@ -8,13 +8,8 @@ import {
 import { restoreElements } from "@excalidraw/excalidraw/data/restore";
 import { getSceneVersion } from "@excalidraw/element";
 import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  runTransaction,
-  Bytes,
-} from "firebase/firestore";
+
+import { getFirestore, doc, getDoc, runTransaction } from "firebase/firestore";
 import { getStorage, ref, uploadBytes } from "firebase/storage";
 
 import type { RemoteExcalidrawElement } from "@excalidraw/excalidraw/data/reconcile";
@@ -30,9 +25,13 @@ import type {
   DataURL,
 } from "@excalidraw/excalidraw/types";
 
+import { workspaceHeaders } from "../lili/workspace";
+
 import { FILE_CACHE_MAX_AGE_SEC } from "../app_constants";
 
 import { getSyncableElements } from ".";
+
+import type { Bytes } from "firebase/firestore";
 
 import type { SyncableExcalidrawElement } from ".";
 import type Portal from "../collab/Portal";
@@ -239,7 +238,10 @@ export const saveFilesToFirebase = async ({
       try {
         const response = await fetch(storagePath("files", prefix, id), {
           method: "PUT",
-          headers: { "Content-Type": "application/octet-stream" },
+          headers: {
+            "Content-Type": "application/octet-stream",
+            ...workspaceHeaders(prefix.split("/").filter(Boolean).at(-1)),
+          },
           body: buffer as Uint8Array<ArrayBuffer>,
         });
         if (!response.ok) {
@@ -295,7 +297,10 @@ export const saveToFirebase = async (
       `${storagePath("scenes", roomId)}?rev=${prevStoredScene?.rev ?? 0}`,
       {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...workspaceHeaders(roomId),
+        },
         body: JSON.stringify(storedScene),
       },
     );

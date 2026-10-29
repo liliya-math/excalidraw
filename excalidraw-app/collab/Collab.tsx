@@ -52,6 +52,8 @@ import type {
 } from "@excalidraw/excalidraw/types";
 import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
 
+import { workspaceHeaders } from "../lili/workspace";
+
 import { appJotaiStore, atom } from "../app-jotai";
 import {
   CURSOR_SYNC_TIMEOUT,
@@ -91,6 +93,9 @@ import { resetBrowserStateVersions } from "../data/tabSync";
 import { collabErrorIndicatorAtom } from "./CollabError";
 import Portal from "./Portal";
 
+import type { SocketUpdateData } from "../data";
+import type { LessonSignal } from "../lili/lesson-signal";
+
 import type {
   SocketUpdateDataSource,
   SyncableExcalidrawElement,
@@ -114,6 +119,12 @@ export const userToFollowAtom = atom<UserToFollow | null>(null);
 type CollabInstance = InstanceType<typeof Collab>;
 
 export interface CollabAPI {
+  getSocketId: () => string | undefined;
+  refreshWorkspaceAccess: () => void;
+  sendLessonSignal: (signal: Omit<LessonSignal, "from">) => Promise<void>;
+  subscribeLessonSignal: (
+    listener: (signal: LessonSignal) => void,
+  ) => () => void;
   /** function so that we can access the latest value from stale callbacks */
   isCollaborating: () => boolean;
   onPointerUpdate: CollabInstance["onPointerUpdate"];
@@ -144,6 +155,32 @@ class Collab extends PureComponent<CollabProps, CollabState> {
   private collaborators = new Map<SocketId, Collaborator>();
   /** the socket ids of the users following the current user */
   private followedBy = new Set<SocketId>();
+  private lessonListeners = new Set<(signal: LessonSignal) => void>();
+  getSocketId = () => this.portal.socket?.id;
+  refreshWorkspaceAccess = () => {
+    this.portal.socket?.disconnect().connect();
+  };
+  subscribeLessonSignal = (listener: (signal: LessonSignal) => void) => {
+    this.lessonListeners.add(listener);
+    return () => {
+      this.lessonListeners.delete(listener);
+    };
+  };
+  sendLessonSignal = async (signal: Omit<LessonSignal, "from">) => {
+    const from = this.getSocketId();
+    if (!from || !this.portal.isOpen()) {
+      throw new Error(
+        "Доска ещё подключается. Попробуй включить видео через несколько секунд.",
+      );
+    }
+    await this.portal._broadcastSocketData(
+      toBrandedType<SocketUpdateData>({
+        type: WS_SUBTYPES.LESSON_SIGNAL,
+        payload: { ...signal, from },
+      }),
+      false,
+    );
+  };
 
   constructor(props: CollabProps) {
     super(props);
@@ -235,6 +272,10 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     this.onOfflineStatusToggle();
 
     const collabAPI: CollabAPI = {
+      getSocketId: this.getSocketId,
+      refreshWorkspaceAccess: this.refreshWorkspaceAccess,
+      sendLessonSignal: this.sendLessonSignal,
+      subscribeLessonSignal: this.subscribeLessonSignal,
       isCollaborating: this.isCollaborating,
       onPointerUpdate: this.onPointerUpdate,
       startCollaboration: this.startCollaboration,
@@ -533,6 +574,13 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       this.portal.socket = this.portal.open(
         socketIOClient(import.meta.env.VITE_APP_WS_SERVER_URL, {
           transports: ["websocket", "polling"],
+          auth: (done) =>
+            done({
+              token: workspaceHeaders(roomId).Authorization?.replace(
+                /^Bearer /,
+                "",
+              ),
+            }),
         }),
         roomId,
         roomKey,
@@ -589,6 +637,17 @@ class Collab extends PureComponent<CollabProps, CollabState> {
         );
 
         switch (decryptedData.type) {
+          case WS_SUBTYPES.LESSON_SIGNAL:
+            if (
+              decryptedData.payload &&
+              typeof decryptedData.payload.from === "string" &&
+              JSON.stringify(decryptedData.payload).length < 100000
+            ) {
+              for (const listener of this.lessonListeners) {
+                listener(decryptedData.payload);
+              }
+            }
+            break;
           case WS_SUBTYPES.INVALID_RESPONSE:
             return;
           case WS_SUBTYPES.INIT: {

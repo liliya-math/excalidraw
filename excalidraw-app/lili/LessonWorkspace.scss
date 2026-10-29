@@ -1,0 +1,51 @@
+.lili-workspace, .lili-video {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  color: #f3ece2;
+  button, input, textarea, select { font: inherit; }
+  button { background:#263e33; color:inherit; border:1px solid #526b60; border-radius:9px; padding:8px 10px; cursor:pointer; }
+  button:hover { background:#365746; }
+  button:disabled { opacity:.5; cursor:default; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline:3px solid #98afff; outline-offset:2px; }
+  a { color:#b8ccff; }
+  label { display:grid; gap:7px; margin:12px 0; font-size:14px; }
+  input,textarea,select { min-width:0; width:100%; box-sizing:border-box; color:inherit; background:#12231c; border:1px solid #526b60; border-radius:8px; padding:9px; }
+  textarea { min-height:95px; resize:vertical; }
+  p { font-size:14px; line-height:1.5; overflow-wrap:anywhere; }
+  .hint { color:#bdcdc3; font-size:12px; }
+  h3 { margin:18px 0 12px; font-size:17px; }
+}
+.lili-workspace__bar { position:fixed; left:14px; bottom:64px; z-index:20; display:flex; gap:6px; padding:7px; max-width:calc(100vw - 42px); flex-wrap:wrap; background:#1b2b28f2; border:1px solid #526b60; border-radius:13px; box-shadow:0 6px 24px #0004; font-size:13px; }
+.lili-workspace__panel { box-sizing:border-box; position:fixed; left:14px; top:76px; z-index:25; width:min(350px,calc(100vw - 28px)); max-height:calc(100dvh - 164px); overflow:auto; padding:18px; background:#1b2b28fa; border:1px solid #526b60; border-radius:16px; box-shadow:0 12px 40px #0005; }
+.lili-workspace__panel header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.lili-workspace__panel h2 { margin:0; font-size:21px; }
+.lili-workspace__tabs, .lili-workspace__choices { display:flex; flex-wrap:wrap; gap:6px; margin:14px 0; font-size:12px; }
+.lili-workspace [aria-pressed="true"] { background:#2f485e; border-color:#a4b7ff; }
+.lili-workspace__list { padding-left:22px; }
+.lili-workspace__list li { margin:7px 0; }
+.lili-workspace__list li>button:first-child { max-width:calc(100% - 36px); text-align:left; }
+.lili-workspace__step { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin:12px 0; padding:13px; background:#12231c; border-radius:12px; border:1px solid #3b5548; }
+.lili-workspace__step p { white-space:pre-wrap; margin:0; }
+.lili-workspace__step button { font-size:12px; }
+.lili-workspace .check { display:flex; align-items:center; }
+.lili-workspace .check input { width:auto; }
+.lili-workspace__message { padding:10px; border:1px solid #688c77; border-radius:10px; }
+.lili-workspace__notice { position:fixed; left:14px; bottom:125px; z-index:30; background:#1b2b28; border:1px solid #789782; border-radius:12px; padding:12px; width:min(450px,calc(100vw - 54px)); font-size:13px; box-shadow:0 8px 30px #0006; }
+.lili-workspace__notice button { float:right; margin-left:8px; }
+.lili-workspace__pens { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); z-index:30; display:flex; gap:7px; padding:8px; background:#1b2b28; border:1px solid #526b60; border-radius:12px; }
+.lili-simple .App-toolbar-container, .lili-simple .App-toolbar, .lili-simple .selected-shape-actions, .lili-simple .lili-math-trigger { display:none!important; }
+.lili-video { position:fixed; z-index:35; background:#1b2b28; border:1px solid #789782; border-radius:14px; width:310px; max-width:calc(100vw - 16px); min-width:210px; resize:horizontal; overflow:auto; box-shadow:0 12px 45px #0007; }
+.lili-video header { display:flex; gap:5px; align-items:center; padding:8px; touch-action:none; cursor:move; }
+.lili-video header b { flex:1; font-size:14px; }
+.lili-video header button { padding:4px 8px; }
+.lili-video__feeds { display:grid; grid-template-columns:2fr 1fr; gap:4px; padding:0 6px; }
+.lili-video video { background:#0d1813; width:100%; min-width:0; aspect-ratio:4/3; object-fit:cover; border-radius:8px; }
+.lili-video video[muted] { transform:scaleX(-1); }
+.lili-video p { padding:0 10px; font-size:12px; }
+.lili-video__actions { display:flex; flex-wrap:wrap; gap:5px; padding:8px; font-size:12px; }
+.lili-video.compact { width:220px; }
+@media(max-width:600px) {
+  .lili-workspace__bar { left:8px; right:8px; bottom:72px; font-size:11px; padding:5px; gap:4px; max-width:none; }
+  .lili-workspace__bar button { padding:7px; }
+  .lili-workspace__panel { left:8px; top:60px; width:calc(100vw - 16px); max-height:calc(100dvh - 190px); }
+  .lili-workspace__pens { gap:4px; font-size:13px; }
+}

@@ -1,0 +1,132 @@
+import { newEmbeddableElement } from "@excalidraw/element/newElement";
+
+import type {
+  ExcalidrawImperativeAPI,
+  BinaryFileData,
+  DataURL,
+} from "@excalidraw/excalidraw/types";
+import type { FileId } from "@excalidraw/element/types";
+
+import { addLessonElements, lessonPlacement } from "./lesson-model";
+export type Material = {
+  file: string;
+  title: string;
+  class?: number | null;
+  type?: string;
+  status?: string;
+};
+export const trustedMaterialURL = (value: string) => {
+  try {
+    const url = new URL(value, "https://liliya-math.github.io/oge/");
+    const trusted =
+      url.protocol === "https:" &&
+      ((url.hostname === "liliya-math.github.io" &&
+        url.pathname.startsWith("/oge/")) ||
+        ["lilimath.ru", "www.lilimath.ru"].includes(url.hostname));
+    return trusted ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+export const addMaterial = async (
+  api: ExcalidrawImperativeAPI,
+  doc: Document,
+  rawURL: string,
+  title: string,
+  progress: (value: string) => void,
+) => {
+  const win = doc.defaultView!;
+  const url = trustedMaterialURL(rawURL);
+  if (!url) {
+    throw new Error(
+      "Можно добавлять материалы только с lilimath.ru и сайта lili.math.",
+    );
+  }
+  if (new URL(url).pathname.toLowerCase().endsWith(".pdf")) {
+    progress("Загружаю PDF…");
+    const response = await win.fetch(url);
+    if (!response.ok) {
+      throw new Error("Не удалось загрузить файл с сайта.");
+    }
+    if (Number(response.headers.get("Content-Length")) > 25 * 1024 * 1024) {
+      throw new Error(
+        "PDF больше 25 МБ. Открой нужные страницы через «Математика».",
+      );
+    }
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > 25 * 1024 * 1024) {
+      throw new Error("PDF больше 25 МБ.");
+    }
+    const pdfjs = await import("pdfjs-dist");
+    pdfjs.GlobalWorkerOptions.workerSrc = (
+      await import("pdfjs-dist/build/pdf.worker.min.mjs?url")
+    ).default;
+    const task = pdfjs.getDocument({ data: bytes, isEvalSupported: false });
+    const pdf = await task.promise;
+    try {
+      const count = Math.min(10, pdf.numPages);
+      const files: BinaryFileData[] = [];
+      const skeletons = [];
+      const place = lessonPlacement(api, 800);
+      let y = place.y;
+      for (let n = 1; n <= count; n++) {
+        progress(`Добавляю страницу ${n} из ${count}…`);
+        const page = await pdf.getPage(n);
+        const base = page.getViewport({ scale: 1 });
+        const viewport = page.getViewport({
+          scale: Math.min(2, 1800 / Math.max(base.width, base.height)),
+        });
+        const canvas = doc.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        await page.render({
+          canvasContext: canvas.getContext("2d")!,
+          viewport,
+          background: "rgb(255,255,255)",
+        }).promise;
+        const fileId = win.crypto.randomUUID() as FileId;
+        files.push({
+          id: fileId,
+          dataURL: canvas.toDataURL("image/jpeg", 0.88) as DataURL,
+          mimeType: "image/jpeg",
+          created: Date.now(),
+        });
+        const width = Math.min(800, base.width);
+        const height = (width * base.height) / base.width;
+        skeletons.push({
+          type: "image" as const,
+          x: place.x,
+          y,
+          frameId: place.frameId,
+          width,
+          height,
+          fileId,
+          locked: true,
+          status: "pending" as const,
+          customData: { materialURL: url, materialTitle: title },
+        });
+        y += height + 35;
+        canvas.width = 0;
+        page.cleanup();
+      }
+      api.addFiles(files);
+      addLessonElements(api, skeletons);
+      return count < pdf.numPages
+        ? `Добавлены первые ${count} страниц из ${pdf.numPages}.`
+        : "PDF добавлен на доску.";
+    } finally {
+      await pdf.destroy();
+    }
+  }
+  const place = lessonPlacement(api, 850);
+  const element = newEmbeddableElement({
+    type: "embeddable",
+    ...place,
+    width: 850,
+    height: 1000,
+    link: url,
+    customData: { materialTitle: title, materialURL: url },
+  });
+  addLessonElements(api, [element]);
+  return "Материал добавлен. Нажми на него дважды, чтобы работать внутри страницы.";
+};

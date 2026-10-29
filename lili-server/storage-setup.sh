@@ -14,6 +14,8 @@ echo "Адрес: https://$DOMAIN"
 echo "== Ставлю хранилище досок"
 mkdir -p /opt/lili-storage /var/lib/lili-storage
 curl -fsSL "$RAW/storage.js" -o /opt/lili-storage/storage.js
+curl -fsSL "$RAW/workspace.js" -o /opt/lili-storage/workspace.js
+curl -fsSL "$RAW/relay-auth.js" -o /opt/lili-storage/relay-auth.js
 
 cat > /etc/systemd/system/lili-storage.service <<EOF
 [Unit]
@@ -56,6 +58,9 @@ tar -czf /var/backups/lili-storage/boards-$(date +%F).tar.gz -C /var/lib lili-st
 find /var/backups/lili-storage -name 'boards-*.tar.gz' -mtime +14 -delete
 EOF
 chmod +x /etc/cron.daily/lili-storage-backup
+
+curl -fsSL "$RAW/update-workspace.sh" -o /tmp/lili-workspace-update.sh
+bash /tmp/lili-workspace-update.sh
 
 sleep 5
 echo
