@@ -23,7 +23,16 @@ export const trustedMaterialURL = (value: string) => {
       ((url.hostname === "liliya-math.github.io" &&
         url.pathname.startsWith("/oge/")) ||
         ["lilimath.ru", "www.lilimath.ru"].includes(url.hostname));
-    return trusted ? url.href : null;
+    if (!trusted) {
+      return null;
+    }
+    // The old GitHub Pages address redirects to HTTP. Use the HTTPS custom
+    // domain directly so embedded lessons and PDF fetches avoid mixed content.
+    if (url.hostname === "liliya-math.github.io") {
+      url.hostname = "lilimath.ru";
+      url.pathname = url.pathname.slice(4);
+    }
+    return url.href;
   } catch {
     return null;
   }

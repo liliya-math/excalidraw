@@ -91,9 +91,7 @@ it("restores changed or deleted protected objects and advances their versions", 
   expect(stable).toBe(result);
 });
 it("allows only the user's material origins", () => {
-  expect(trustedMaterialURL("dz.html")).toBe(
-    "https://liliya-math.github.io/oge/dz.html",
-  );
+  expect(trustedMaterialURL("dz.html")).toBe("https://lilimath.ru/dz.html");
   expect(trustedMaterialURL("https://lilimath.ru/dz.html")).toBeTruthy();
   for (const url of [
     ["java", "script:alert(1)"].join(""),

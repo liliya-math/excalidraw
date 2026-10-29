@@ -317,7 +317,7 @@ export const LessonWorkspace = ({
     }
     const controller = new doc.defaultView!.AbortController();
     doc
-      .defaultView!.fetch("https://liliya-math.github.io/oge/catalog.json", {
+      .defaultView!.fetch("https://lilimath.ru/catalog.json", {
         signal: controller.signal,
       })
       .then((r) => {
