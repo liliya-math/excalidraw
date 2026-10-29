@@ -13,6 +13,7 @@ import { saveDebugState } from "./DebugCanvas";
 export const AppMainMenu: React.FC<{
   onCollabDialogOpen: () => any;
   onStudentBoardsOpen: () => void;
+  onMathToolsOpen: () => void;
   isCollaborating: boolean;
   isCollabEnabled: boolean;
   theme: Theme | "system";
@@ -20,6 +21,9 @@ export const AppMainMenu: React.FC<{
 }> = React.memo((props) => {
   return (
     <MainMenu>
+      <MainMenu.Item onSelect={props.onMathToolsOpen}>
+        ∑ Математика: PDF, формулы, графики
+      </MainMenu.Item>
       <MainMenu.DefaultItems.LoadScene />
       <MainMenu.DefaultItems.SaveToActiveFile />
       <MainMenu.DefaultItems.Export />

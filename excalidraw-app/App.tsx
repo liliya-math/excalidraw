@@ -61,6 +61,8 @@ import {
   useHandleLibrary,
 } from "@excalidraw/excalidraw/data/library";
 
+import { setLibraryPreviewFiles } from "@excalidraw/excalidraw/hooks/useLibraryItemSvg";
+
 import type { RemoteExcalidrawElement } from "@excalidraw/excalidraw/data/reconcile";
 import type { RestoredDataState } from "@excalidraw/excalidraw/data/restore";
 import type {
@@ -107,7 +109,7 @@ import {
   ensureStudentBoardLink,
 } from "./lili/StudentBoards";
 import { buildLiliLibrary } from "./lili/library";
-import { setLibraryPreviewFiles } from "@excalidraw/excalidraw/hooks/useLibraryItemSvg";
+import { MathTools } from "./lili/MathTools";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import {
@@ -509,6 +511,7 @@ const ExcalidrawWrapper = () => {
 
   const [, forceRefresh] = useState(false);
   const [studentBoardsOpen, setStudentBoardsOpen] = useState(false);
+  const [mathToolsOpen, setMathToolsOpen] = useState(false);
 
   useEffect(() => {
     if (isDevEnv()) {
@@ -1050,25 +1053,30 @@ const ExcalidrawWrapper = () => {
         autoFocus={true}
         theme={editorTheme}
         onThemeChange={setAppTheme}
-        renderTopRightUI={(isMobile) => {
-          if (isMobile || !collabAPI || isCollabDisabled) {
-            return null;
-          }
-
-          return (
-            <div className="excalidraw-ui-top-right">
-
-              {collabError.message && <CollabError collabError={collabError} />}
-              <LiveCollaborationTrigger
-                isCollaborating={isCollaborating}
-                onSelect={() =>
-                  setShareDialogState({ isOpen: true, type: "share" })
-                }
-                editorInterface={editorInterface}
-              />
-            </div>
-          );
-        }}
+        renderTopRightUI={(isMobile) => (
+          <div className="excalidraw-ui-top-right">
+            <button
+              className="lili-math-trigger"
+              onClick={() => setMathToolsOpen(true)}
+            >
+              ∑ Математика
+            </button>
+            {!isMobile && collabAPI && !isCollabDisabled && (
+              <>
+                {collabError.message && (
+                  <CollabError collabError={collabError} />
+                )}
+                <LiveCollaborationTrigger
+                  isCollaborating={isCollaborating}
+                  onSelect={() =>
+                    setShareDialogState({ isOpen: true, type: "share" })
+                  }
+                  editorInterface={editorInterface}
+                />
+              </>
+            )}
+          </div>
+        )}
         onLinkOpen={(element, event) => {
           if (element.link && isElementLink(element.link)) {
             event.preventDefault();
@@ -1083,6 +1091,7 @@ const ExcalidrawWrapper = () => {
         <AppMainMenu
           onCollabDialogOpen={onCollabDialogOpen}
           onStudentBoardsOpen={() => setStudentBoardsOpen(true)}
+          onMathToolsOpen={() => setMathToolsOpen(true)}
           isCollaborating={isCollaborating}
           isCollabEnabled={!isCollabDisabled}
           theme={appTheme}
@@ -1114,6 +1123,12 @@ const ExcalidrawWrapper = () => {
         </OverwriteConfirmDialog>
         <AppFooter onChange={() => excalidrawAPI?.refresh()} />
         <StudentBoardBadge />
+        {mathToolsOpen && excalidrawAPI && (
+          <MathTools
+            api={excalidrawAPI}
+            onClose={() => setMathToolsOpen(false)}
+          />
+        )}
         {studentBoardsOpen && (
           <StudentBoardsDialog onClose={() => setStudentBoardsOpen(false)} />
         )}
