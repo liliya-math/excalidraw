@@ -15,6 +15,8 @@ import type {
   ExcalidrawImperativeAPI,
 } from "@excalidraw/excalidraw/types";
 
+import { initClientProtection, setClientOwner } from "./client-protection";
+
 export const readRoom = (hash: string) => {
   const match =
     /^#room=([\w-]+),([\w-]{22})(?:;(teacher|student)=([\w-]{32,128}))?$/.exec(
@@ -49,6 +51,8 @@ const stores = () =>
 const credentialKey = (id: string) => `lili-workspace-access-${id}`;
 export const initWorkspace = (win: Window & typeof globalThis) => {
   const room = readRoom(win.location.hash);
+  initClientProtection(room?.id || "local");
+  setClientOwner(null);
   protectedElements = [];
   revision = 0;
   if (!room) {
@@ -120,6 +124,37 @@ const deriveStudent = async (
   return Array.from(new Uint8Array(digest), (v) =>
     v.toString(16).padStart(2, "0"),
   ).join("");
+};
+export const prepareClientTeacher = async () => {
+  const current = session;
+  if (!current?.credentials.teacher) {
+    return;
+  }
+  const student = await deriveStudent(current.credentials.teacher, current.win);
+  if (session !== current) {
+    return;
+  }
+  current.credentials.student = student;
+  current.win.localStorage.setItem(
+    credentialKey(current.id),
+    JSON.stringify(current.credentials),
+  );
+  setClientOwner(student);
+};
+export const claimClientWorkspace = async (
+  room: { id: string },
+  win: Window & typeof globalThis,
+) => {
+  if (!session || session.id !== room.id) {
+    throw new Error("Открой совместную доску и повтори действие.");
+  }
+  if (!session.credentials.teacher) {
+    session.credentials.teacher = Array.from(
+      win.crypto.getRandomValues(new Uint8Array(32)),
+      (v) => v.toString(16).padStart(2, "0"),
+    ).join("");
+  }
+  await prepareClientTeacher();
 };
 export const fetchWorkspace = async (
   room: { id: string; key: string },

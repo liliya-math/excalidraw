@@ -53,6 +53,7 @@ import type {
 import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
 
 import { workspaceHeaders } from "../lili/workspace";
+import { receiveClientProtection } from "../lili/client-protection";
 
 import { appJotaiStore, atom } from "../app-jotai";
 import {
@@ -869,6 +870,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
   private handleRemoteSceneUpdate = (
     elements: ReconciledExcalidrawElement[],
   ) => {
+    receiveClientProtection(elements);
     this.excalidrawAPI.updateScene({
       elements,
       captureUpdate: CaptureUpdateAction.NEVER,

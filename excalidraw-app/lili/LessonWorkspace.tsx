@@ -19,6 +19,8 @@ import {
 } from "./lesson-model";
 import {
   initWorkspace,
+  prepareClientTeacher,
+  claimClientWorkspace,
   workspaceKey,
   fetchWorkspace,
   claimWorkspace,
@@ -33,6 +35,12 @@ import {
   loadPlan,
   savePlan,
 } from "./workspace";
+import {
+  clientIsStudent,
+  clientPinnedIds,
+  pinElements,
+  unpinElements,
+} from "./client-protection";
 
 import { exportLessonPDF, download } from "./lesson-export";
 import { addMaterial, trustedMaterialURL } from "./materials";
@@ -81,6 +89,7 @@ export const LessonWorkspace = ({
   const [room, setRoom] = useState<ReturnType<typeof initWorkspace>>(null);
   const [info, setInfo] = useState<WorkspaceInfo | null>(null);
   const [serverError, setServerError] = useState("");
+  const [clientReady, setClientReady] = useState(false);
   const [name, setName] = useState("");
   const [active, setActive] = useState("");
   const [history, setHistory] = useState<Snapshot[]>([]);
@@ -105,7 +114,10 @@ export const LessonWorkspace = ({
   const live = useRef(true);
   const key = doc ? workspaceKey(doc.defaultView!) : "local";
   const frames = lessonFrames(elements);
-  const isStudent = info?.exists ? info.role !== "teacher" : simple;
+  const clientStudent = clientReady && clientIsStudent();
+  const isStudent = info?.exists
+    ? info.role !== "teacher"
+    : simple || clientStudent;
   const canTeach = !isStudent;
   useEffect(() => {
     const owner = root.current?.ownerDocument;
@@ -125,6 +137,18 @@ export const LessonWorkspace = ({
     live.current = true;
     const ownGeneration = ++generation.current;
     const current = initWorkspace(win);
+    setClientReady(false);
+    void prepareClientTeacher()
+      .catch(() => {
+        if (live.current && generation.current === ownGeneration) {
+          setMessage("Не удалось восстановить ссылку учителя в этом браузере.");
+        }
+      })
+      .finally(() => {
+        if (live.current && generation.current === ownGeneration) {
+          setClientReady(true);
+        }
+      });
     setRoom(current);
     setInfo(null);
     onAccess(null);
@@ -1088,42 +1112,117 @@ export const LessonWorkspace = ({
                 <p>
                   Сначала создай совместную доску через кнопку общего доступа.
                 </p>
-              ) : serverError ? (
-                <>
-                  <p>{serverError}</p>
-                  <a
-                    href="https://github.com/liliya-math/excalidraw/blob/master/lili-server/WORKSPACE.md"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Обновление сервера
-                  </a>
-                </>
               ) : !info?.exists ? (
                 <>
                   <p>
-                    У доски будут отдельные ссылки учителя и ученика. Ссылка
-                    учителя позволит менять защиту и должна оставаться у тебя.
+                    Выдели условие, рисунок или область урока и закрепи их.
+                    Ученик сможет писать рядом, а закреплённые объекты будут
+                    защищены от случайного перемещения и удаления.
                   </p>
+                  <p>Закреплено объектов: {clientPinnedIds().size}.</p>
                   <button
-                    disabled={busy || !info}
+                    disabled={busy || !clientReady}
                     onClick={() =>
                       void act(async () => {
-                        const next = await claimWorkspace(
-                          room,
-                          doc!.defaultView!,
+                        const selected = api.getAppState().selectedElementIds;
+                        if (!Object.values(selected).some(Boolean)) {
+                          throw new Error("Сначала выдели задание на доске.");
+                        }
+                        await claimClientWorkspace(room, doc!.defaultView!);
+                        const pinned = pinElements(
+                          api.getSceneElementsIncludingDeleted(),
+                          selected,
                         );
-                        setInfo(next);
-                        onAccess(next.role || "visitor");
-                        collab?.refreshWorkspaceAccess();
+                        api.updateScene({
+                          elements: pinned,
+                          appState: { selectedElementIds: {} },
+                          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+                        });
+                        setElements(api.getSceneElements());
                         setMessage(
-                          "Права включены. Сохрани ссылку учителя и отправь ученику новую ссылку.",
+                          "Задание закреплено. Сохрани ссылку учителя, а ученику отправь ученическую ссылку.",
                         );
                       })
                     }
                   >
-                    Включить права учителя и ученика
+                    Закрепить выделенное задание
                   </button>
+                  <button
+                    disabled={busy || !clientPinnedIds().size}
+                    onClick={() =>
+                      void act(async () => {
+                        const unpinned = unpinElements(
+                          api.getSceneElementsIncludingDeleted(),
+                          clientPinnedIds(),
+                        );
+                        api.updateScene({
+                          elements: unpinned,
+                          captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+                        });
+                        setElements(api.getSceneElements());
+                        setMessage(
+                          "Закрепление снято с твоих заданий. Их снова можно редактировать.",
+                        );
+                      })
+                    }
+                  >
+                    Снять закрепление с моих заданий
+                  </button>
+                  <button
+                    disabled={busy || !clientReady}
+                    onClick={() =>
+                      void act(async () => {
+                        await claimClientWorkspace(room, doc!.defaultView!);
+                        await copy(recoveryLink(doc!.defaultView!)!);
+                      })
+                    }
+                  >
+                    Скопировать ссылку учителя
+                  </button>
+                  <button
+                    onClick={() =>
+                      void act(async () => {
+                        await copy(
+                          decorateInvite(
+                            room.id,
+                            `${doc!.defaultView!.location.origin}${
+                              doc!.defaultView!.location.pathname
+                            }#room=${room.id},${room.key}`,
+                          ),
+                        );
+                      })
+                    }
+                  >
+                    Скопировать ссылку ученика
+                  </button>
+                  <p className="hint">
+                    Закрепление работает без обновления сервера. Оно защищает от
+                    случайных действий в этой доске, но не от намеренного
+                    обхода. Ссылка учителя нужна для снятия закрепления на
+                    другом устройстве. Старые версии приложения могут не
+                    поддерживать закрепление: перед уроком обновите страницу.
+                  </p>
+                  {!serverError && info && (
+                    <details>
+                      <summary>Серверная защита</summary>
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          void act(async () => {
+                            const next = await claimWorkspace(
+                              room,
+                              doc!.defaultView!,
+                            );
+                            setInfo(next);
+                            onAccess(next.role || "visitor");
+                            collab?.refreshWorkspaceAccess();
+                          })
+                        }
+                      >
+                        Включить проверку прав на сервере
+                      </button>
+                    </details>
+                  )}
                 </>
               ) : info.role === "teacher" ? (
                 <>
@@ -1230,6 +1329,11 @@ export const LessonWorkspace = ({
       {info?.exists && info.role === "visitor" && (
         <div className="lili-workspace__notice">
           Для записи нужна ссылка ученика или учителя. Сейчас доступен просмотр.
+        </div>
+      )}
+      {clientStudent && !info?.exists && (
+        <div className="lili-workspace__notice" role="status">
+          Задание закреплено учителем. Пиши решение рядом или поверх задания.
         </div>
       )}
       {video && doc && (

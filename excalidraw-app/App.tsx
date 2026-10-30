@@ -112,6 +112,7 @@ import { buildLiliLibrary } from "./lili/library";
 import { MathTools } from "./lili/MathTools";
 import { LessonWorkspace } from "./lili/LessonWorkspace";
 import { enforceProtection, initWorkspace } from "./lili/workspace";
+import { enforceClientProtection } from "./lili/client-protection";
 import { trustedMaterialURL } from "./lili/materials";
 import { AppMainMenu } from "./components/AppMainMenu";
 import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
@@ -799,7 +800,7 @@ const ExcalidrawWrapper = () => {
     appState: AppState,
     files: BinaryFiles,
   ) => {
-    const guarded = enforceProtection(elements);
+    const guarded = enforceClientProtection(enforceProtection(elements));
     if (guarded !== elements && excalidrawAPI) {
       excalidrawAPI.updateScene({
         elements: guarded,
