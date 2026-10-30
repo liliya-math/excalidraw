@@ -281,6 +281,9 @@ export const LessonWorkspace = ({
     }
     const win = doc.defaultView!;
     const params = new URLSearchParams(win.location.search);
+    if (params.get("video") === "1") {
+      setVideo(true);
+    }
     const url = params.get("material");
     if (!url) {
       return;
