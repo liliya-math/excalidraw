@@ -18,6 +18,7 @@ import {
   initWorkspace,
   prepareClientTeacher,
   recoveryLink,
+  workspaceHeaders,
 } from "./workspace";
 
 const owner = "a".repeat(64);
@@ -121,6 +122,7 @@ it("recovers the teacher on another device without giving their key to pupils", 
   window.history.replaceState(null, "", `/#room=${id},${key}`);
   initWorkspace(window);
   await claimClientWorkspace({ id }, window);
+  expect(workspaceHeaders(id)).toEqual({});
   const teacherLink = recoveryLink(window)!;
   const pupilLink = decorateInvite(
     id,
@@ -128,6 +130,8 @@ it("recovers the teacher on another device without giving their key to pupils", 
   );
   const secret = teacherLink.split(";teacher=")[1];
   expect(secret).toHaveLength(64);
+  expect(new URL(teacherLink).searchParams.get("pin")).toBe("1");
+  expect(new URL(pupilLink).searchParams.get("pin")).toBe("1");
   expect(pupilLink).not.toContain(secret);
   const elements = example();
   const pinned = pinElements(elements, { [elements[0].id]: true });
@@ -142,11 +146,13 @@ it("recovers the teacher on another device without giving their key to pupils", 
   await prepareClientTeacher();
   receiveClientProtection(pinned);
   expect(clientIsStudent()).toBe(true);
+  expect(workspaceHeaders(id)).toEqual({});
   window.localStorage.clear();
   window.history.replaceState(null, "", teacherLink);
   initWorkspace(window);
   await prepareClientTeacher();
   receiveClientProtection(pinned);
   expect(clientIsStudent()).toBe(false);
+  expect(workspaceHeaders(id)).toEqual({});
   expect(unpinElements(pinned, clientPinnedIds())[0].locked).toBe(false);
 });

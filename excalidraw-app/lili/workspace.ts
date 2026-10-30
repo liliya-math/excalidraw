@@ -29,7 +29,11 @@ export const readRoom = (hash: string) => {
 export const storageBase = `${String(
   import.meta.env.VITE_APP_WS_SERVER_URL || "",
 ).replace(/\/$/, "")}/storage`;
-type Credentials = { teacher?: string; student?: string };
+type Credentials = {
+  teacher?: string;
+  student?: string;
+  clientOnly?: boolean;
+};
 type Sealed = { iv: string; ciphertext: string };
 export type WorkspaceInfo = {
   exists: boolean;
@@ -68,21 +72,35 @@ export const initWorkspace = (win: Window & typeof globalThis) => {
     /* new device */
   }
   if (room.role && room.token) {
-    credentials[room.role as keyof Credentials] = room.token;
+    credentials[room.role as "teacher" | "student"] = room.token;
+    credentials.clientOnly =
+      new URLSearchParams(win.location.search).get("pin") === "1";
   }
   session = { id: room.id, credentials, win };
   return room;
 };
 export const workspaceHeaders = (roomId?: string): Record<string, string> => {
-  if (!session || (roomId && session.id !== roomId)) {
+  if (
+    !session ||
+    session.credentials.clientOnly ||
+    (roomId && session.id !== roomId)
+  ) {
     return {};
   }
   const token = session.credentials.teacher || session.credentials.student;
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
+const clientLink = (link: string) => {
+  if (!session?.credentials.clientOnly) {
+    return link;
+  }
+  const url = new URL(link);
+  url.searchParams.set("pin", "1");
+  return url.toString();
+};
 export const decorateInvite = (id: string, link: string) =>
   session?.id === id && session.credentials.student
-    ? `${link};student=${session.credentials.student}`
+    ? clientLink(`${link};student=${session.credentials.student}`)
     : link;
 export const workspaceRole = () =>
   session?.credentials.teacher
@@ -154,6 +172,9 @@ export const claimClientWorkspace = async (
       (v) => v.toString(16).padStart(2, "0"),
     ).join("");
   }
+  // The legacy server does not accept Authorization in its CORS preflight.
+  // Convenience locks must never opt that server into capability auth.
+  session.credentials.clientOnly = true;
   await prepareClientTeacher();
 };
 export const fetchWorkspace = async (
@@ -326,7 +347,9 @@ export const enforceProtection = <T extends ExcalidrawElement>(
 export const recoveryLink = (win: Window & typeof globalThis) => {
   const room = readRoom(win.location.hash);
   return room && session?.credentials.teacher
-    ? `${win.location.origin}${win.location.pathname}#room=${room.id},${room.key};teacher=${session.credentials.teacher}`
+    ? clientLink(
+        `${win.location.origin}${win.location.pathname}#room=${room.id},${room.key};teacher=${session.credentials.teacher}`,
+      )
     : null;
 };
 
