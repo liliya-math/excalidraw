@@ -1,4 +1,5 @@
 import path from "path";
+
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import svgrPlugin from "vite-plugin-svgr";
@@ -7,10 +8,13 @@ import { VitePWA } from "vite-plugin-pwa";
 import checker from "vite-plugin-checker";
 import { createHtmlPlugin } from "vite-plugin-html";
 import Sitemap from "vite-plugin-sitemap";
+
 import { woff2BrowserPlugin } from "../scripts/woff2/woff2-vite-plugins";
 export default defineConfig(({ mode }) => {
   // To load .env variables
   const envVars = loadEnv(mode, `../`);
+  // Optional tools are cached on first use, without competing with startup.
+  const startupScripts = new Set<string>();
   // https://vitejs.dev/config/
   return {
     server: {
@@ -117,10 +121,6 @@ export default defineConfig(({ mode }) => {
               return `locales/${id.substring(index + 8)}`;
             }
 
-            if (id.includes("@excalidraw/mermaid-to-excalidraw")) {
-              return "mermaid-to-excalidraw";
-            }
-
             if (id.includes("@codemirror/") || id.includes("@lezer/")) {
               return "codemirror.chunk";
             }
@@ -132,6 +132,27 @@ export default defineConfig(({ mode }) => {
       assetsInlineLimit: 0,
     },
     plugins: [
+      {
+        name: "lili-startup-scripts",
+        generateBundle(_, bundle) {
+          startupScripts.clear();
+          const visit = (name: string) => {
+            if (startupScripts.has(name)) {
+              return;
+            }
+            startupScripts.add(name);
+            const chunk = bundle[name];
+            if (chunk?.type === "chunk") {
+              chunk.imports.forEach(visit);
+            }
+          };
+          for (const chunk of Object.values(bundle)) {
+            if (chunk.type === "chunk" && chunk.isEntry) {
+              visit(chunk.fileName);
+            }
+          }
+        },
+      },
       Sitemap({
         hostname: "https://excalidraw.com",
         outDir: "build",
@@ -162,6 +183,15 @@ export default defineConfig(({ mode }) => {
         },
 
         workbox: {
+          manifestTransforms: [
+            async (entries) => ({
+              manifest: entries.filter(
+                (entry) =>
+                  !/\.m?js$/.test(entry.url) || startupScripts.has(entry.url),
+              ),
+              warnings: [],
+            }),
+          ],
           // don't precache fonts, locales and separate chunks
           globIgnores: [
             "fonts.css",
@@ -175,6 +205,18 @@ export default defineConfig(({ mode }) => {
             "**/CodeMirrorEditor-*.js",
           ],
           runtimeCaching: [
+            {
+              urlPattern: /\/assets\/[^/]+\.m?js$/,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "lili-tools",
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 90,
+                },
+                cacheableResponse: { statuses: [200] },
+              },
+            },
             {
               urlPattern: new RegExp(".+.woff2"),
               handler: "CacheFirst",

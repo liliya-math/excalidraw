@@ -7,10 +7,6 @@ import {
 } from "@excalidraw/excalidraw/data/encryption";
 import { restoreElements } from "@excalidraw/excalidraw/data/restore";
 import { getSceneVersion } from "@excalidraw/element";
-import { initializeApp } from "firebase/app";
-
-import { getFirestore, doc, getDoc, runTransaction } from "firebase/firestore";
-import { getStorage, ref, uploadBytes } from "firebase/storage";
 
 import type { RemoteExcalidrawElement } from "@excalidraw/excalidraw/data/reconcile";
 import type {
@@ -27,66 +23,17 @@ import type {
 
 import { workspaceHeaders } from "../lili/workspace";
 
-import { FILE_CACHE_MAX_AGE_SEC } from "../app_constants";
-
 import { getSyncableElements } from ".";
-
-import type { Bytes } from "firebase/firestore";
 
 import type { SyncableExcalidrawElement } from ".";
 import type Portal from "../collab/Portal";
 import type { Socket } from "socket.io-client";
 
-// private
-// -----------------------------------------------------------------------------
-
-let FIREBASE_CONFIG: Record<string, any>;
-try {
-  FIREBASE_CONFIG = JSON.parse(import.meta.env.VITE_APP_FIREBASE_CONFIG);
-} catch (error: any) {
-  console.warn(
-    `Error JSON parsing firebase config. Supplied value: ${
-      import.meta.env.VITE_APP_FIREBASE_CONFIG
-    }`,
-  );
-  FIREBASE_CONFIG = {};
-}
-
-let firebaseApp: ReturnType<typeof initializeApp> | null = null;
-let firestore: ReturnType<typeof getFirestore> | null = null;
-let firebaseStorage: ReturnType<typeof getStorage> | null = null;
-
-const _initializeFirebase = () => {
-  if (!firebaseApp) {
-    firebaseApp = initializeApp(FIREBASE_CONFIG);
-  }
-  return firebaseApp;
-};
-
-const _getFirestore = () => {
-  if (!firestore) {
-    firestore = getFirestore(_initializeFirebase());
-  }
-  return firestore;
-};
-
-const _getStorage = () => {
-  if (!firebaseStorage) {
-    firebaseStorage = getStorage(_initializeFirebase());
-  }
-  return firebaseStorage;
-};
-
-// -----------------------------------------------------------------------------
-
+// The optional Excalidraw+ export is the only remaining Firebase consumer.
+// Keep its SDK outside the board's startup dependency graph.
 export const loadFirebaseStorage = async () => {
-  return _getStorage();
-};
-
-type FirebaseStoredScene = {
-  sceneVersion: number;
-  iv: Bytes;
-  ciphertext: Bytes;
+  const { loadStorage } = await import("./firebase-storage");
+  return loadStorage();
 };
 
 const encryptElements = async (
@@ -98,20 +45,6 @@ const encryptElements = async (
   const { encryptedBuffer, iv } = await encryptData(key, encoded);
 
   return { ciphertext: encryptedBuffer, iv };
-};
-
-const decryptElements = async (
-  data: FirebaseStoredScene,
-  roomKey: string,
-): Promise<readonly ExcalidrawElement[]> => {
-  const ciphertext = data.ciphertext.toUint8Array() as Uint8Array<ArrayBuffer>;
-  const iv = data.iv.toUint8Array() as Uint8Array<ArrayBuffer>;
-
-  const decrypted = await decryptData(iv, ciphertext, roomKey);
-  const decodedData = new TextDecoder("utf-8").decode(
-    new Uint8Array(decrypted),
-  );
-  return JSON.parse(decodedData);
 };
 
 class FirebaseSceneVersionCache {

@@ -1,5 +1,4 @@
 import React from "react";
-import { uploadBytes, ref } from "firebase/storage";
 import { nanoid } from "nanoid";
 
 import { trackEvent } from "@excalidraw/excalidraw/analytics";
@@ -35,7 +34,10 @@ export const exportToExcalidrawPlus = async (
   files: BinaryFiles,
   name: string,
 ) => {
-  const storage = await loadFirebaseStorage();
+  const [{ uploadBytes, ref }, storage] = await Promise.all([
+    import("firebase/storage"),
+    loadFirebaseStorage(),
+  ]);
 
   const id = `${nanoid(12)}`;
 

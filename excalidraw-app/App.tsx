@@ -493,31 +493,44 @@ const ExcalidrawWrapper = () => {
     };
   }, []);
 
+  const documentRoot = useRef<HTMLDivElement | null>(null);
+
   // lili.math: ship mascot stickers and math templates in the library
   useEffect(() => {
     if (!excalidrawAPI) {
       return;
     }
     let cancelled = false;
-    loadBuiltinFiles().then((files) => {
-      if (cancelled) {
+    const win = documentRoot.current?.ownerDocument.defaultView;
+    let timer: number | undefined;
+    initialStatePromiseRef.current.promise.then(() => {
+      if (cancelled || !win) {
         return;
       }
-      setLibraryPreviewFiles(Object.fromEntries(files));
-      excalidrawAPI.addFiles([...files.values()]);
-      const liliItems = buildLiliLibrary();
-      excalidrawAPI
-        .updateLibrary({
-          libraryItems: (current) => {
-            const have = new Set(current.map((item) => item.id));
-            return liliItems.filter((item) => !have.has(item.id));
-          },
-          merge: true,
-        })
-        .catch((error) => console.error(error));
+      // Give the initial scene and its images priority over library previews.
+      timer = win.setTimeout(() => {
+        loadBuiltinFiles().then((files) => {
+          if (cancelled) {
+            return;
+          }
+          setLibraryPreviewFiles(Object.fromEntries(files));
+          excalidrawAPI.addFiles([...files.values()]);
+          const liliItems = buildLiliLibrary();
+          excalidrawAPI
+            .updateLibrary({
+              libraryItems: (current) => {
+                const have = new Set(current.map((item) => item.id));
+                return liliItems.filter((item) => !have.has(item.id));
+              },
+              merge: true,
+            })
+            .catch((error) => console.error(error));
+        });
+      }, 1500);
     });
     return () => {
       cancelled = true;
+      win?.clearTimeout(timer);
     };
   }, [excalidrawAPI]);
 
@@ -525,6 +538,7 @@ const ExcalidrawWrapper = () => {
   const [studentBoardsOpen, setStudentBoardsOpen] = useState(false);
   const [mathToolsOpen, setMathToolsOpen] = useState(false);
   const workspaceRoot = useCallback((node: HTMLDivElement | null) => {
+    documentRoot.current = node;
     const win = node?.ownerDocument.defaultView;
     if (win) {
       initWorkspace(win);
