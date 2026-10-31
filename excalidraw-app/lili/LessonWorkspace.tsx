@@ -56,6 +56,7 @@ import {
 } from "./board-window";
 import { MaterialDuplicateDialog } from "./MaterialDuplicateDialog";
 import { LessonTemplates } from "./LessonTemplates";
+import { ContentTemplates } from "./ContentTemplates";
 
 import { geometryElements } from "./geometry-tools";
 
@@ -74,6 +75,7 @@ import type { WorkspaceInfo, Snapshot, PrivatePlan } from "./workspace";
 import type { CollabAPI } from "../collab/Collab";
 
 type Panel =
+  | "content"
   | "templates"
   | "lessons"
   | "plan"
@@ -107,6 +109,7 @@ export const LessonWorkspace = ({
     state: "connecting",
   });
   const [savingNow, setSavingNow] = useState(false);
+  const [contentRequested, setContentRequested] = useState("");
   const [requestTick, setRequestTick] = useState(0);
   const [pendingMaterials, setPendingMaterials] = useState<
     { url: string; title: string }[]
@@ -172,6 +175,18 @@ export const LessonWorkspace = ({
     },
     [doc, api],
   );
+  useEffect(() => {
+    if (!doc || !clientReady || !canTeach) {
+      return;
+    }
+    const requested = new URLSearchParams(doc.defaultView!.location.search).get(
+      "contentTemplate",
+    );
+    if (requested && /^[a-z0-9_-]{1,100}$/i.test(requested)) {
+      setContentRequested(requested);
+      setPanel("content");
+    }
+  }, [doc, clientReady, canTeach, requestTick, roomHash]);
   handleBoardOpen.current = async (incoming) => {
     if (!doc) {
       return;
@@ -785,7 +800,12 @@ export const LessonWorkspace = ({
   );
   const tabs: [Panel, string][] = [
     ["lessons", "Уроки"],
-    ...(canTeach ? [["templates", "Шаблоны"] as [Panel, string]] : []),
+    ...(canTeach
+      ? ([
+          ["templates", "Шаблоны"],
+          ["content", "Мои материалы"],
+        ] as [Panel, string][])
+      : []),
     ...(canTeach ? [["plan", "План и шаги"] as [Panel, string]] : []),
     ["history", "Снимки"],
     ["pdf", "Итоговый PDF"],
@@ -800,6 +820,20 @@ export const LessonWorkspace = ({
   return (
     <div ref={root} className="lili-workspace">
       <nav className="lili-workspace__bar" aria-label="Управление уроком">
+        {doc &&
+          new URLSearchParams(doc.defaultView!.location.search).get(
+            "personal",
+          ) === "1" && (
+            <>
+              <b>Моя доска</b>
+              <a
+                className="lili-cabinet-return"
+                href="https://lilimath.ru/kabinet.html#lilia"
+              >
+                В мой кабинет
+              </a>
+            </>
+          )}
         {context && (
           <a className="lili-cabinet-return" href={context.back}>
             В кабинет{context.name ? ` · ${context.name}` : ""}
@@ -919,6 +953,16 @@ export const LessonWorkspace = ({
               </button>
             ))}
           </nav>
+          {panel === "content" && canTeach && doc && (
+            <ContentTemplates
+              key={`${key}-${requestTick}`}
+              api={api}
+              doc={doc}
+              workspace={key}
+              requested={contentRequested}
+              notify={setMessage}
+            />
+          )}
           {panel === "templates" && canTeach && doc && (
             <LessonTemplates
               api={api}
