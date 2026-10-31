@@ -43,6 +43,9 @@ describe("lesson logistics", () => {
       "https://lilimath.ru/kabinet.html?lesson=abc-123#lilia-alice",
     );
     expect(teacher?.start).toBe(true);
+    expect(teacher?.finishBack).toBe(
+      "https://lilimath.ru/kabinet.html?lesson=abc-123&finish=1#lilia-alice",
+    );
     const pupil = cabinetContext(
       "?cabinet=alice&cabinetRole=student&lessonId=abc-123&lessonDate=2026-10-31&startLesson=1",
     );

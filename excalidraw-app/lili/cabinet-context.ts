@@ -7,6 +7,7 @@ export type CabinetContext = {
   title: string;
   start: boolean;
   back: string;
+  finishBack: string;
 };
 
 export const cabinetContext = (search: string): CabinetContext | null => {
@@ -31,6 +32,8 @@ export const cabinetContext = (search: string): CabinetContext | null => {
     back.searchParams.set("lesson", lessonId);
   }
   back.hash = teacher ? `lilia-${code}` : code;
+  const finishBack = new URL(back.href);
+  finishBack.searchParams.set("finish", "1");
   return {
     code,
     teacher,
@@ -40,5 +43,6 @@ export const cabinetContext = (search: string): CabinetContext | null => {
     title: (params.get("lessonTitle") || "").slice(0, 300),
     start: teacher && !!lessonId && !!date && params.get("startLesson") === "1",
     back: back.href,
+    finishBack: finishBack.href,
   };
 };

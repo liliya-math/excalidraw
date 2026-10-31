@@ -198,6 +198,36 @@ export const LessonWorkspace = ({
       win.clearTimeout(timer);
     };
   }, [doc, api, clientReady, canTeach, roomHash]);
+  const finishLesson = async () => {
+    if (!doc || !context?.teacher || !context.lessonId || savingNow) {
+      return;
+    }
+    setSavingNow(true);
+    try {
+      await takeSnapshot(key, api, "Перед завершением урока");
+      setHistory(await snapshots(key));
+      if (collab?.isCollaborating()) {
+        await collab.saveNow?.();
+      }
+      const status = collab?.getSaveStatus?.() || { state: "local" as const };
+      setSaveStatus(status);
+      if (room && status.state !== "saved") {
+        setMessage(
+          "Локальный снимок сделан. Дождись сохранения на сервере и нажми «Завершить урок» ещё раз.",
+        );
+        return;
+      }
+      doc.defaultView!.location.assign(context.finishBack);
+    } catch (error) {
+      setMessage(
+        `Не удалось подготовить завершение: ${
+          (error as Error).message
+        }. Сохрани доску через меню.`,
+      );
+    } finally {
+      setSavingNow(false);
+    }
+  };
   const saveNow = async () => {
     if (!doc || savingNow) {
       return;
@@ -661,6 +691,11 @@ export const LessonWorkspace = ({
           <a className="lili-cabinet-return" href={context.back}>
             В кабинет{context.name ? ` · ${context.name}` : ""}
           </a>
+        )}
+        {context?.teacher && context.lessonId && (
+          <button disabled={savingNow} onClick={() => void finishLesson()}>
+            Завершить урок
+          </button>
         )}
         <div
           className={`lili-save-status lili-save-status--${saveStatus.state}`}
