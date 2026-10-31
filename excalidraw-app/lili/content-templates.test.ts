@@ -8,6 +8,7 @@ import {
   applyContentTemplate,
   captureContentTemplate,
   validateContentTemplate,
+  mergeContentLibraries,
 } from "./content-templates";
 
 function board(
@@ -140,5 +141,62 @@ describe("content templates", () => {
     expect(() => captureContentTemplate(api, "Тема", true)).toThrow("выдели");
     expect(() => validateContentTemplate({ version: 2 })).toThrow();
     expect(api.getSceneElements()).toHaveLength(0);
+  });
+  it("merges old backups without reviving deleted items and keeps newer restores", () => {
+    const elements = convertToExcalidrawElements([
+      { type: "rectangle", x: 0, y: 0, width: 100, height: 100 },
+    ]);
+    const original = validateContentTemplate({
+      version: 1,
+      id: "content-test",
+      name: "Корни",
+      created: 1,
+      elements,
+      files: {},
+    });
+    const deleted = { ...original, updated: 5, deletedAt: 5 };
+    expect(mergeContentLibraries([deleted], [original])[0].deletedAt).toBe(5);
+    const restored = {
+      ...original,
+      updated: 8,
+      deletedAt: undefined,
+      folder: "8 класс / Корни",
+      favorite: true,
+    };
+    const result = mergeContentLibraries([deleted], [restored])[0];
+    expect(result.deletedAt).toBeUndefined();
+    expect(result.favorite).toBe(true);
+    expect(result.folder).toBe("8 класс / Корни");
+    expect(() =>
+      mergeContentLibraries([original], [{ ...original, name: "" }]),
+    ).toThrow();
+  });
+  it("places a loose material inside the chosen frame without changing source", () => {
+    const source = convertToExcalidrawElements([
+      { type: "rectangle", x: 0, y: 0, width: 100, height: 100 },
+    ]);
+    const saved = captureContentTemplate(board(source), "Тема", false);
+    const destination = board(
+      convertToExcalidrawElements(
+        [
+          {
+            id: "target",
+            type: "frame",
+            x: 500,
+            y: 500,
+            width: 600,
+            height: 600,
+            name: "Урок",
+            children: [],
+          },
+        ],
+        { regenerateIds: false },
+      ),
+    );
+    const frame = destination.getSceneElements()[0];
+    const result = applyContentTemplate(destination, saved, false, frame);
+    expect(result.elements[0].frameId).toBe("target");
+    expect(result.elements[0].x).toBeGreaterThan(500);
+    expect(source[0].frameId).toBeNull();
   });
 });

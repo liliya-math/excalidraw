@@ -743,6 +743,10 @@ export const LessonWorkspace = ({
     });
   const restore = (snapshot: Snapshot) =>
     act(async () => {
+      if (api.getAppState().isLoading) {
+        throw new Error("Дождись загрузки доски.");
+      }
+      const originalHash = doc!.defaultView!.location.hash;
       if (
         !doc!.defaultView!.confirm(
           `Восстановить «${snapshot.name}»? Текущая доска сначала сохранится отдельным снимком.`,
@@ -751,6 +755,9 @@ export const LessonWorkspace = ({
         return;
       }
       await takeSnapshot(key, api, "Перед восстановлением");
+      if (doc!.defaultView!.location.hash !== originalHash) {
+        return;
+      }
       api.addFiles(Object.values(snapshot.files));
       api.updateScene({
         elements: restoreSnapshot(snapshot, api),
@@ -1236,6 +1243,14 @@ export const LessonWorkspace = ({
           {panel === "history" && (
             <section>
               <h3>Снимки доски</h3>
+              {canTeach && history[0] && (
+                <button
+                  disabled={busy}
+                  onClick={() => void restore(history[0])}
+                >
+                  Восстановить последний снимок
+                </button>
+              )}
               <p className="hint">
                 До 12 снимков в этом браузере. Автоснимок создаётся при
                 изменениях примерно раз в 3 минуты. Очистка данных браузера
