@@ -2,7 +2,8 @@ import {
   convertToExcalidrawElements,
   CaptureUpdateAction,
 } from "@excalidraw/excalidraw";
-import { getCommonBounds, newElementWith } from "@excalidraw/element";
+import { newElementWith } from "@excalidraw/element";
+import { getCommonBounds } from "@excalidraw/element/bounds";
 
 import type { ExcalidrawElementSkeleton } from "@excalidraw/element/transform";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";

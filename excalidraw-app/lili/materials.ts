@@ -20,6 +20,8 @@ export const trustedMaterialURL = (value: string) => {
     const url = new URL(value, "https://liliya-math.github.io/oge/");
     const trusted =
       url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
       ((url.hostname === "liliya-math.github.io" &&
         url.pathname.startsWith("/oge/")) ||
         ["lilimath.ru", "www.lilimath.ru"].includes(url.hostname));
@@ -37,12 +39,13 @@ export const trustedMaterialURL = (value: string) => {
     return null;
   }
 };
-export const addMaterial = async (
+const importMaterial = async (
   api: ExcalidrawImperativeAPI,
   doc: Document,
   rawURL: string,
   title: string,
   progress: (value: string) => void,
+  isCurrent: () => boolean,
 ) => {
   const win = doc.defaultView!;
   const url = trustedMaterialURL(rawURL);
@@ -118,6 +121,9 @@ export const addMaterial = async (
         canvas.width = 0;
         page.cleanup();
       }
+      if (!isCurrent()) {
+        throw new Error("Комната изменилась. Добавление материала отменено.");
+      }
       api.addFiles(files);
       addLessonElements(api, skeletons);
       return count < pdf.numPages
@@ -138,4 +144,74 @@ export const addMaterial = async (
   });
   addLessonElements(api, [element]);
   return "Материал добавлен. Нажми на него дважды, чтобы работать внутри страницы.";
+};
+
+export const materialKey = (rawURL: string) => {
+  const trusted = trustedMaterialURL(rawURL);
+  if (!trusted) {
+    return null;
+  }
+  const url = new URL(trusted);
+  url.hostname = "lilimath.ru";
+  for (const key of [...url.searchParams.keys()]) {
+    if (["lili_resume"].includes(key) || key.startsWith("utm_")) {
+      url.searchParams.delete(key);
+    }
+  }
+  url.searchParams.sort();
+  if (url.pathname.toLowerCase().endsWith(".pdf")) {
+    url.hash = "";
+  }
+  return url.href;
+};
+export const findMaterial = (api: ExcalidrawImperativeAPI, rawURL: string) => {
+  const key = materialKey(rawURL);
+  return key
+    ? api
+        .getSceneElements()
+        .filter(
+          (element) =>
+            typeof element.customData?.materialURL === "string" &&
+            materialKey(element.customData.materialURL) === key,
+        )
+    : [];
+};
+const imports = new WeakMap<ExcalidrawImperativeAPI, Promise<unknown>>();
+export const addMaterial = (
+  api: ExcalidrawImperativeAPI,
+  doc: Document,
+  rawURL: string,
+  title: string,
+  progress: (value: string) => void,
+  options: { duplicate?: "reuse" | "copy" } = {},
+): Promise<string> => {
+  const hash = doc.defaultView!.location.hash;
+  const isCurrent = () => doc.defaultView!.location.hash === hash;
+  const previous = imports.get(api) || Promise.resolve();
+  const current = previous
+    .catch(() => {})
+    .then(async () => {
+      if (!isCurrent()) {
+        throw new Error("Комната изменилась. Добавление материала отменено.");
+      }
+      const existing = findMaterial(api, rawURL);
+      if (existing.length && options.duplicate !== "copy") {
+        api.setViewport({
+          target: existing[0],
+          fit: "scale-down",
+          animation: true,
+        });
+        return "Это задание уже есть на доске. Перешли к существующему материалу.";
+      }
+      return importMaterial(api, doc, rawURL, title, progress, isCurrent);
+    });
+  imports.set(api, current);
+  void current
+    .finally(() => {
+      if (imports.get(api) === current) {
+        imports.delete(api);
+      }
+    })
+    .catch(() => {});
+  return current;
 };

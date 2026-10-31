@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
 import { newElementWith } from "@excalidraw/element";
 import { randomId } from "@excalidraw/common";
@@ -43,7 +43,19 @@ import {
 } from "./client-protection";
 
 import { exportLessonPDF, download } from "./lesson-export";
-import { addMaterial, trustedMaterialURL } from "./materials";
+import {
+  addMaterial,
+  trustedMaterialURL,
+  findMaterial,
+  materialKey,
+} from "./materials";
+import {
+  registerBoardWindow,
+  sameBoardAccess,
+  mergeBoardRequest,
+} from "./board-window";
+import { MaterialDuplicateDialog } from "./MaterialDuplicateDialog";
+import { LessonTemplates } from "./LessonTemplates";
 
 import { geometryElements } from "./geometry-tools";
 
@@ -62,6 +74,7 @@ import type { WorkspaceInfo, Snapshot, PrivatePlan } from "./workspace";
 import type { CollabAPI } from "../collab/Collab";
 
 type Panel =
+  | "templates"
   | "lessons"
   | "plan"
   | "history"
@@ -94,8 +107,16 @@ export const LessonWorkspace = ({
     state: "connecting",
   });
   const [savingNow, setSavingNow] = useState(false);
-  const openedSession = useRef("");
+  const [requestTick, setRequestTick] = useState(0);
+  const [pendingMaterials, setPendingMaterials] = useState<
+    { url: string; title: string }[]
+  >([]);
   const [busy, setBusy] = useState(false);
+  const busyCount = useRef(0);
+  const boardRequests = useRef(Promise.resolve());
+  const handleBoardOpen = useRef<(url: string) => Promise<void>>(
+    async () => {},
+  );
   const [message, setMessage] = useState("");
   const [room, setRoom] = useState<ReturnType<typeof initWorkspace>>(null);
   const [info, setInfo] = useState<WorkspaceInfo | null>(null);
@@ -131,6 +152,99 @@ export const LessonWorkspace = ({
     : simple || clientStudent;
   const canTeach = !isStudent;
   const context = doc ? cabinetContext(doc.defaultView!.location.search) : null;
+  const requestMaterial = useCallback(
+    async (url: string, title: string) => {
+      if (!doc) {
+        return "Доска ещё открывается.";
+      }
+      if (api.getAppState().isLoading) {
+        return "Доска ещё загружается. Повтори добавление после открытия комнаты.";
+      }
+      if (findMaterial(api, url).length) {
+        setPendingMaterials((current) =>
+          current.some((m) => materialKey(m.url) === materialKey(url))
+            ? current
+            : [...current, { url, title }],
+        );
+        return "Материал уже есть. Выбери переход или добавление копии.";
+      }
+      return addMaterial(api, doc, url, title, setMessage);
+    },
+    [doc, api],
+  );
+  handleBoardOpen.current = async (incoming) => {
+    if (!doc) {
+      return;
+    }
+    const win = doc.defaultView!;
+    if (!sameBoardAccess(win.location.href, incoming)) {
+      return;
+    }
+    incoming = mergeBoardRequest(win.location.href, incoming);
+    win.history.replaceState(null, "", incoming);
+    setRequestTick((value) => value + 1);
+    const params = new URL(incoming).searchParams;
+    if (params.get("video") === "1") {
+      setVideo(true);
+    }
+    const material = params.get("material");
+    if (!material) {
+      return;
+    }
+    const hash = win.location.hash;
+    for (
+      let i = 0;
+      api.getAppState().isLoading ||
+      (params.get("startLesson") === "1" &&
+        new URLSearchParams(win.location.search).get("startLesson") === "1");
+      i++
+    ) {
+      if (i > 120 || hash !== win.location.hash) {
+        throw new Error("Доска ещё загружается. Повтори добавление материала.");
+      }
+      await new Promise<void>((resolve) => win.setTimeout(resolve, 250));
+    }
+    if (hash !== win.location.hash) {
+      return;
+    }
+    busyCount.current++;
+    setBusy(true);
+    try {
+      setMessage(
+        await requestMaterial(
+          material,
+          params.get("materialTitle") || "Материал из кабинета",
+        ),
+      );
+      const current = new URLSearchParams(win.location.search);
+      if (current.get("material") === material) {
+        current.delete("material");
+        current.delete("materialTitle");
+      }
+      win.history.replaceState(
+        null,
+        "",
+        win.location.pathname +
+          (current.size ? `?${current}` : "") +
+          win.location.hash,
+      );
+    } finally {
+      busyCount.current--;
+      setBusy(busyCount.current > 0);
+    }
+  };
+  useEffect(() => {
+    if (!doc) {
+      return;
+    }
+    return registerBoardWindow(doc, (url) => {
+      boardRequests.current = boardRequests.current
+        .catch(() => {})
+        .then(() => handleBoardOpen.current(url))
+        .catch((error) => setMessage((error as Error).message));
+    });
+  }, [doc, roomHash]);
+
   useEffect(() => {
     if (!doc) {
       return;
@@ -157,11 +271,7 @@ export const LessonWorkspace = ({
     }
     const win = doc.defaultView!;
     const selected = cabinetContext(win.location.search);
-    if (
-      !selected?.start ||
-      !selected.lessonId ||
-      openedSession.current === selected.lessonId
-    ) {
+    if (!selected?.start || !selected.lessonId) {
       return;
     }
     let cancelled = false;
@@ -174,7 +284,6 @@ export const LessonWorkspace = ({
         timer = win.setTimeout(enter, 300);
         return;
       }
-      openedSession.current = selected.lessonId;
       const frame = ensureLessonSession(api, selected);
       setActiveLesson(frame.id);
       setActive(frame.id);
@@ -197,7 +306,7 @@ export const LessonWorkspace = ({
       cancelled = true;
       win.clearTimeout(timer);
     };
-  }, [doc, api, clientReady, canTeach, roomHash]);
+  }, [doc, api, clientReady, canTeach, roomHash, requestTick]);
   const finishLesson = async () => {
     if (!doc || !context?.teacher || !context.lessonId || savingNow) {
       return;
@@ -284,6 +393,7 @@ export const LessonWorkspace = ({
           setClientReady(true);
         }
       });
+    setPendingMaterials([]);
     setRoom(current);
     setInfo(null);
     onAccess(null);
@@ -438,33 +548,33 @@ export const LessonWorkspace = ({
         return;
       }
       try {
+        busyCount.current++;
         setBusy(true);
-        const message = await addMaterial(
-          api,
-          doc,
+        const message = await requestMaterial(
           url,
           params.get("materialTitle") || "Материал из кабинета",
-          setMessage,
         );
         if (cancelled) {
           return;
         }
         setMessage(message);
-        params.delete("material");
-        params.delete("materialTitle");
+        const currentParams = new URLSearchParams(win.location.search);
+        if (currentParams.get("material") === url) {
+          currentParams.delete("material");
+          currentParams.delete("materialTitle");
+        }
         win.history.replaceState(
           null,
           "",
           win.location.pathname +
-            (params.size ? `?${params}` : "") +
+            (currentParams.size ? `?${currentParams}` : "") +
             win.location.hash,
         );
       } catch (e) {
         setMessage((e as Error).message);
       } finally {
-        if (!cancelled) {
-          setBusy(false);
-        }
+        busyCount.current--;
+        setBusy(busyCount.current > 0);
       }
     };
     timer = win.setTimeout(load, 700);
@@ -472,7 +582,7 @@ export const LessonWorkspace = ({
       cancelled = true;
       win.clearTimeout(timer);
     };
-  }, [doc, api]);
+  }, [doc, api, requestMaterial]);
   useEffect(() => {
     if (panel !== "materials" || catalog.length || !doc) {
       return;
@@ -509,6 +619,7 @@ export const LessonWorkspace = ({
     if (busy) {
       return;
     }
+    busyCount.current++;
     setBusy(true);
     setMessage("");
     try {
@@ -516,7 +627,8 @@ export const LessonWorkspace = ({
     } catch (e) {
       setMessage((e as Error).message || "Не удалось выполнить действие.");
     } finally {
-      setBusy(false);
+      busyCount.current--;
+      setBusy(busyCount.current > 0);
     }
   };
   const open = (next: Panel) => {
@@ -673,6 +785,7 @@ export const LessonWorkspace = ({
   );
   const tabs: [Panel, string][] = [
     ["lessons", "Уроки"],
+    ...(canTeach ? [["templates", "Шаблоны"] as [Panel, string]] : []),
     ...(canTeach ? [["plan", "План и шаги"] as [Panel, string]] : []),
     ["history", "Снимки"],
     ["pdf", "Итоговый PDF"],
@@ -732,6 +845,42 @@ export const LessonWorkspace = ({
           </button>
         )}
       </nav>
+      {pendingMaterials[0] && (
+        <MaterialDuplicateDialog
+          title={pendingMaterials[0].title}
+          busy={busy}
+          onCancel={() => setPendingMaterials((current) => current.slice(1))}
+          onReuse={() => {
+            const found = findMaterial(api, pendingMaterials[0].url);
+            if (found[0]) {
+              api.setViewport({
+                target: found[0],
+                fit: "scale-down",
+                animation: true,
+              });
+            } else {
+              setMessage("Материал удалён из комнаты. Добавь его заново.");
+            }
+            setPendingMaterials((current) => current.slice(1));
+          }}
+          onCopy={() =>
+            void act(async () => {
+              const pending = pendingMaterials[0];
+              setMessage(
+                await addMaterial(
+                  api,
+                  doc!,
+                  pending.url,
+                  pending.title,
+                  setMessage,
+                  { duplicate: "copy" },
+                ),
+              );
+              setPendingMaterials((current) => current.slice(1));
+            })
+          }
+        />
+      )}
       {simple && (
         <nav className="lili-workspace__pens" aria-label="Инструменты ученика">
           {(
@@ -770,6 +919,20 @@ export const LessonWorkspace = ({
               </button>
             ))}
           </nav>
+          {panel === "templates" && canTeach && doc && (
+            <LessonTemplates
+              api={api}
+              doc={doc}
+              workspace={key}
+              session={context?.lessonId || ""}
+              notify={setMessage}
+              onApplied={(id) => {
+                setActive(id);
+                setActiveLesson(id);
+                void snapshots(key).then(setHistory);
+              }}
+            />
+          )}
           {panel === "lessons" && (
             <section>
               <h3>Области доски</h3>
@@ -1174,15 +1337,7 @@ export const LessonWorkspace = ({
                       disabled={busy}
                       onClick={() =>
                         void act(async () => {
-                          setMessage(
-                            await addMaterial(
-                              api,
-                              doc!,
-                              m.file,
-                              m.title,
-                              setMessage,
-                            ),
-                          );
+                          setMessage(await requestMaterial(m.file, m.title));
                         })
                       }
                     >

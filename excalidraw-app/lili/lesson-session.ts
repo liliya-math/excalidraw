@@ -9,6 +9,16 @@ export const ensureLessonSession = (
   api: ExcalidrawImperativeAPI,
   session: { lessonId: string; date: string; title: string },
 ) => {
+  const templated = lessonFrames(api.getSceneElements())
+    .filter(
+      (element) =>
+        element.customData?.liliTemplateScope === session.lessonId &&
+        element.customData?.liliTemplateSection === 0,
+    )
+    .at(-1);
+  if (templated) {
+    return templated;
+  }
   const existing = lessonFrames(api.getSceneElements()).find(
     (element) => element.customData?.liliSessionId === session.lessonId,
   );

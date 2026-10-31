@@ -96,3 +96,5 @@
 /* Leave the cabinet and save controls visible while a lesson panel is open. */
 .lili-workspace__panel { max-height:calc(100dvh - 230px); }
 @media(max-width:600px) { .lili-workspace__panel { max-height:calc(100dvh - 290px); } }
+
+.lili-material-choice{font-family:-apple-system,BlinkMacSystemFont,Inter,sans-serif;background:#1b2b28;color:#f3ece2;border:1px solid #789782;border-radius:18px;padding:22px;width:min(460px,calc(100vw - 40px))}.lili-material-choice::backdrop{background:#0009}.lili-material-choice p{line-height:1.5}.lili-material-choice div{display:flex;gap:8px;flex-wrap:wrap}.lili-material-choice button{background:#263e33;color:#f3ece2;border:1px solid #789782;border-radius:9px;padding:9px;cursor:pointer}.lili-material-choice button:focus-visible{outline:3px solid #98afff}.lili-material-choice button:disabled{opacity:.5}
