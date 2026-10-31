@@ -671,7 +671,9 @@ export const LessonWorkspace = ({
           {history[0] && (
             <small>
               Локальный снимок:{" "}
-              {new Date(history[0].created).toLocaleTimeString("ru-RU", {
+              {new Date(history[0].created).toLocaleString("ru-RU", {
+                day: "numeric",
+                month: "short",
                 hour: "2-digit",
                 minute: "2-digit",
               })}

@@ -92,3 +92,7 @@
     max-width: 180px;
   }
 }
+
+/* Leave the cabinet and save controls visible while a lesson panel is open. */
+.lili-workspace__panel { max-height:calc(100dvh - 230px); }
+@media(max-width:600px) { .lili-workspace__panel { max-height:calc(100dvh - 290px); } }
