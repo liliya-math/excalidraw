@@ -171,7 +171,7 @@ export const LessonTemplates = ({
             try {
               download(
                 doc,
-                new Blob(
+                new win.Blob(
                   [
                     JSON.stringify({
                       version: 1,
