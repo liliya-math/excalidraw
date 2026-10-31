@@ -54,6 +54,7 @@ import type { Mutable, ValueOf } from "@excalidraw/common/utility-types";
 
 import { workspaceHeaders } from "../lili/workspace";
 import { receiveClientProtection } from "../lili/client-protection";
+import { boardSaveStatus } from "../lili/save-status";
 
 import { appJotaiStore, atom } from "../app-jotai";
 import {
@@ -94,6 +95,8 @@ import { resetBrowserStateVersions } from "../data/tabSync";
 import { collabErrorIndicatorAtom } from "./CollabError";
 import Portal from "./Portal";
 
+import type { BoardSaveStatus } from "../lili/save-status";
+
 import type { SocketUpdateData } from "../data";
 import type { LessonSignal } from "../lili/lesson-signal";
 
@@ -120,6 +123,8 @@ export const userToFollowAtom = atom<UserToFollow | null>(null);
 type CollabInstance = InstanceType<typeof Collab>;
 
 export interface CollabAPI {
+  getSaveStatus?: () => BoardSaveStatus;
+  saveNow?: () => Promise<void>;
   getSocketId: () => string | undefined;
   refreshWorkspaceAccess: () => void;
   sendLessonSignal: (signal: Omit<LessonSignal, "from">) => Promise<void>;
@@ -157,6 +162,37 @@ class Collab extends PureComponent<CollabProps, CollabState> {
   /** the socket ids of the users following the current user */
   private followedBy = new Set<SocketId>();
   private lessonListeners = new Set<(signal: LessonSignal) => void>();
+  private pendingSaves = 0;
+  private saveFailed = false;
+  private mediaSaveFailed = false;
+  private lastSavedAt = 0;
+  getSaveStatus = (): BoardSaveStatus =>
+    boardSaveStatus({
+      collaborating: this.isCollaborating(),
+      connected: !!this.portal.socket?.connected,
+      initialized: this.portal.socketInitialized,
+      offline: appJotaiStore.get(isOfflineAtom),
+      saving:
+        this.pendingSaves > 0 ||
+        this.fileManager.shouldPreventUnload(
+          getSyncableElements(this.getSceneElementsIncludingDeleted()),
+        ),
+      failed: this.saveFailed || this.mediaSaveFailed,
+      saved: isSavedToFirebase(
+        this.portal,
+        getSyncableElements(this.getSceneElementsIncludingDeleted()),
+      ),
+      savedAt: this.lastSavedAt,
+    });
+  saveNow = async () => {
+    if (!this.portal.socketInitialized) {
+      return;
+    }
+    await this.portal.queueFileUpload.flush();
+    await this.saveCollabRoomToFirebase(
+      getSyncableElements(this.getSceneElementsIncludingDeleted()),
+    );
+  };
   getSocketId = () => this.portal.socket?.id;
   refreshWorkspaceAccess = () => {
     this.portal.socket?.disconnect().connect();
@@ -217,6 +253,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
           }),
         });
 
+        this.mediaSaveFailed = erroredFiles.length > 0;
         return {
           savedFiles: savedFiles.reduce(
             (acc: Map<FileId, BinaryFileData>, id) => {
@@ -274,6 +311,8 @@ class Collab extends PureComponent<CollabProps, CollabState> {
 
     const collabAPI: CollabAPI = {
       getSocketId: this.getSocketId,
+      getSaveStatus: this.getSaveStatus,
+      saveNow: this.saveNow,
       refreshWorkspaceAccess: this.refreshWorkspaceAccess,
       sendLessonSignal: this.sendLessonSignal,
       subscribeLessonSignal: this.subscribeLessonSignal,
@@ -366,6 +405,8 @@ class Collab extends PureComponent<CollabProps, CollabState> {
     syncableElements: readonly SyncableExcalidrawElement[],
   ) => {
     syncableElements = cloneJSON(syncableElements);
+    const savingRoom = this.portal.roomId;
+    this.pendingSaves++;
     try {
       const storedElements = await saveToFirebase(
         this.portal,
@@ -373,12 +414,21 @@ class Collab extends PureComponent<CollabProps, CollabState> {
         this.excalidrawAPI.getAppState(),
       );
 
+      if (savingRoom === this.portal.roomId) {
+        this.saveFailed = false;
+        if (storedElements) {
+          this.lastSavedAt = Date.now();
+        }
+      }
       this.resetErrorIndicator();
 
       if (this.isCollaborating() && storedElements) {
         this.handleRemoteSceneUpdate(this._reconcileElements(storedElements));
       }
     } catch (error: any) {
+      if (savingRoom === this.portal.roomId) {
+        this.saveFailed = true;
+      }
       const errorMessage = /is longer than.*?bytes/.test(error.message)
         ? t("errors.collabSaveFailed_sizeExceeded")
         : t("errors.collabSaveFailed");
@@ -401,6 +451,8 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       }
 
       console.error(error);
+    } finally {
+      this.pendingSaves--;
     }
   };
 
@@ -554,6 +606,9 @@ class Collab extends PureComponent<CollabProps, CollabState> {
       | null
     >();
 
+    this.saveFailed = false;
+    this.mediaSaveFailed = false;
+    this.lastSavedAt = 0;
     this.setIsCollaborating(true);
     LocalData.pauseSave("collaboration");
 
@@ -797,6 +852,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
           this.portal.socket,
         );
         if (elements) {
+          this.lastSavedAt = Date.now();
           this.setLastBroadcastedOrReceivedSceneVersion(
             getSceneVersion(elements),
           );

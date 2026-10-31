@@ -48,7 +48,13 @@ import { addMaterial, trustedMaterialURL } from "./materials";
 import { geometryElements } from "./geometry-tools";
 
 import { VideoCall } from "./VideoCall";
+import { cabinetContext } from "./cabinet-context";
+import { ensureLessonSession } from "./lesson-session";
+import { saveStatusText } from "./save-status";
+
 import "./LessonWorkspace.scss";
+
+import type { BoardSaveStatus } from "./save-status";
 
 import type { GeometryTool } from "./geometry-tools";
 import type { Material } from "./materials";
@@ -84,6 +90,11 @@ export const LessonWorkspace = ({
   );
   const [simple, setSimple] = useState(false);
   const [video, setVideo] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<BoardSaveStatus>({
+    state: "connecting",
+  });
+  const [savingNow, setSavingNow] = useState(false);
+  const openedSession = useRef("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [room, setRoom] = useState<ReturnType<typeof initWorkspace>>(null);
@@ -119,6 +130,100 @@ export const LessonWorkspace = ({
     ? info.role !== "teacher"
     : simple || clientStudent;
   const canTeach = !isStudent;
+  const context = doc ? cabinetContext(doc.defaultView!.location.search) : null;
+  useEffect(() => {
+    if (!doc) {
+      return;
+    }
+    const win = doc.defaultView!;
+    const refreshStatus = () => {
+      const next = collab?.getSaveStatus?.() || {
+        state: room ? ("connecting" as const) : ("local" as const),
+      };
+      setSaveStatus((previous) =>
+        previous.state === next.state && previous.savedAt === next.savedAt
+          ? previous
+          : next,
+      );
+    };
+    refreshStatus();
+    const timer = win.setInterval(refreshStatus, 1500);
+    return () => win.clearInterval(timer);
+  }, [doc, collab, room]);
+
+  useEffect(() => {
+    if (!doc || !clientReady || !canTeach) {
+      return;
+    }
+    const win = doc.defaultView!;
+    const selected = cabinetContext(win.location.search);
+    if (
+      !selected?.start ||
+      !selected.lessonId ||
+      openedSession.current === selected.lessonId
+    ) {
+      return;
+    }
+    let cancelled = false;
+    let timer: number;
+    const enter = () => {
+      if (cancelled) {
+        return;
+      }
+      if (api.getAppState().isLoading) {
+        timer = win.setTimeout(enter, 300);
+        return;
+      }
+      openedSession.current = selected.lessonId;
+      const frame = ensureLessonSession(api, selected);
+      setActiveLesson(frame.id);
+      setActive(frame.id);
+      api.setViewport({ target: frame, fit: "scale-down", animation: true });
+      const params = new URLSearchParams(win.location.search);
+      params.delete("startLesson");
+      win.history.replaceState(
+        null,
+        "",
+        win.location.pathname +
+          (params.size ? `?${params}` : "") +
+          win.location.hash,
+      );
+      setMessage(
+        "Открыта область этого занятия. План и итоги доступны в карточке кабинета.",
+      );
+    };
+    timer = win.setTimeout(enter, 400);
+    return () => {
+      cancelled = true;
+      win.clearTimeout(timer);
+    };
+  }, [doc, api, clientReady, canTeach, roomHash]);
+  const saveNow = async () => {
+    if (!doc || savingNow) {
+      return;
+    }
+    setSavingNow(true);
+    try {
+      await takeSnapshot(key, api, "Ручной снимок");
+      setHistory(await snapshots(key));
+      if (collab?.isCollaborating()) {
+        await collab.saveNow?.();
+      }
+      setSaveStatus(collab?.getSaveStatus?.() || { state: "local" });
+      setMessage(
+        "Локальный снимок сохранён. Статус сервера показан рядом с кнопкой.",
+      );
+    } catch (e) {
+      setMessage(
+        `Сохранение не завершено: ${
+          (e as Error).message
+        }. Можно выгрузить доску через меню.`,
+      );
+    } finally {
+      setSavingNow(false);
+    }
+  };
+
   useEffect(() => {
     const owner = root.current?.ownerDocument;
     if (owner) {
@@ -552,6 +657,31 @@ export const LessonWorkspace = ({
   return (
     <div ref={root} className="lili-workspace">
       <nav className="lili-workspace__bar" aria-label="Управление уроком">
+        {context && (
+          <a className="lili-cabinet-return" href={context.back}>
+            В кабинет{context.name ? ` · ${context.name}` : ""}
+          </a>
+        )}
+        <div
+          className={`lili-save-status lili-save-status--${saveStatus.state}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span>{saveStatusText[saveStatus.state]}</span>
+          {history[0] && (
+            <small>
+              Локальный снимок:{" "}
+              {new Date(history[0].created).toLocaleTimeString("ru-RU", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </small>
+          )}
+        </div>
+        <button disabled={savingNow} onClick={() => void saveNow()}>
+          {savingNow ? "Сохраняю…" : "Сохранить сейчас"}
+        </button>
+
         <button onClick={() => open("lessons")}>Уроки</button>
         <button onClick={follow} aria-pressed={!!following}>
           {following ? "Отключить следование" : "За учителем"}

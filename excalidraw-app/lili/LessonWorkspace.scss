@@ -49,3 +49,46 @@
   .lili-workspace__panel { left:8px; top:60px; width:calc(100vw - 16px); max-height:calc(100dvh - 190px); }
   .lili-workspace__pens { gap:4px; font-size:13px; }
 }
+
+.lili-cabinet-return {
+  display: flex;
+  align-items: center;
+  padding: 7px 9px;
+  border: 1px solid #789782;
+  border-radius: 9px;
+  text-decoration: none;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lili-save-status {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 5px;
+  max-width: 240px;
+  font-size: 12px;
+}
+.lili-save-status small {
+  color: #bdcdc3;
+  font-size: 10px;
+}
+.lili-save-status--saved {
+  color: #b3dda0;
+}
+.lili-save-status--offline,
+.lili-save-status--error {
+  color: #ffb89b;
+}
+@media (max-width: 600px) {
+  .lili-save-status {
+    font-size: 10px;
+    max-width: 180px;
+  }
+  .lili-cabinet-return {
+    font-size: 11px;
+    max-width: 180px;
+  }
+}
