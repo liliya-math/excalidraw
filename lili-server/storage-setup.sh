@@ -8,7 +8,7 @@ RAW="https://raw.githubusercontent.com/liliya-math/excalidraw/master/lili-server
 
 echo "== Определяю адрес сервера"
 IP=$(curl -4 -s https://api.ipify.org || hostname -I | awk '{print $1}')
-DOMAIN="$(echo "$IP" | tr '.' '-').sslip.io"
+DOMAIN="${DOMAIN:-room.lilimath.ru}"
 echo "Адрес: https://$DOMAIN"
 
 echo "== Ставлю хранилище досок"

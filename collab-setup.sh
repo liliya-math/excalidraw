@@ -6,7 +6,7 @@ BOARD_ORIGIN="https://liliya-math.github.io"
 
 echo "== Определяю IP сервера"
 IP=$(curl -4 -s https://api.ipify.org || hostname -I | awk '{print $1}')
-DOMAIN="$(echo "$IP" | tr '.' '-').sslip.io"
+DOMAIN="${DOMAIN:-room.lilimath.ru}"
 echo "IP: $IP  ->  адрес сервера: https://$DOMAIN"
 
 echo "== Ставлю Node.js, git и Caddy"
